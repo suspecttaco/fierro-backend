@@ -1,0 +1,849 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["app", "audit", "billing", "catalog", "compat", "content", "notifications", "orders", "returns", "users"]
+}
+
+model audit_log {
+  log_id      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String?  @db.Uuid
+  action      String   @db.VarChar(100)
+  entity_type String   @db.VarChar(60)
+  entity_id   String?  @db.Uuid
+  old_values  Json?
+  new_values  Json?
+  ip_address  String?  @db.VarChar(45)
+  user_agent  String?  @db.VarChar(300)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  user        user?    @relation(fields: [user_id], references: [user_id], onUpdate: NoAction)
+
+  @@index([action], map: "idx_audit_action")
+  @@index([created_at(sort: Desc)], map: "idx_audit_created")
+  @@index([entity_type, entity_id], map: "idx_audit_entity")
+  @@index([new_values], map: "idx_audit_new_values", type: Gin)
+  @@index([old_values], map: "idx_audit_old_values", type: Gin)
+  @@index([user_id], map: "idx_audit_user")
+  @@schema("audit")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model search_log {
+  search_id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String?  @db.Uuid
+  query              String   @db.VarChar(300)
+  filters_applied    Json     @default("{}")
+  results_count      Int      @default(0)
+  clicked_product_id String?  @db.Uuid
+  session_token      String?  @db.VarChar(100)
+  ip_address         String?  @db.VarChar(45)
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  user               user?    @relation(fields: [user_id], references: [user_id], onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_search_created")
+  @@index([query], map: "idx_search_no_res", where: raw("(results_count = 0)"))
+  @@index([user_id], map: "idx_search_user")
+  @@schema("audit")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model invoice {
+  invoice_id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id           String         @db.Uuid
+  tax_profile_id     String         @db.Uuid
+  related_invoice_id String?        @db.Uuid
+  invoice_number     String         @unique @db.VarChar(50)
+  type               String         @default("invoice") @db.VarChar(15)
+  status             String         @default("draft") @db.VarChar(15)
+  subtotal           Decimal        @default(0) @db.Decimal(12, 2)
+  tax_rate           Decimal        @default(0.16) @db.Decimal(5, 4)
+  tax_amount         Decimal        @default(0) @db.Decimal(12, 2)
+  total              Decimal        @default(0) @db.Decimal(12, 2)
+  currency           String         @default("MXN") @db.Char(3)
+  pdf_url            String?        @db.VarChar(500)
+  xml_url            String?        @db.VarChar(500)
+  issued_at          DateTime?      @db.Timestamptz(6)
+  cancelled_at       DateTime?      @db.Timestamptz(6)
+  created_at         DateTime       @default(now()) @db.Timestamptz(6)
+  order              order          @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction)
+  invoice            invoice?       @relation("invoiceToinvoice", fields: [related_invoice_id], references: [invoice_id], onUpdate: NoAction)
+  other_invoice      invoice[]      @relation("invoiceToinvoice")
+  tax_profile        tax_profile    @relation(fields: [tax_profile_id], references: [tax_profile_id], onDelete: NoAction, onUpdate: NoAction)
+  invoice_item       invoice_item[]
+
+  @@index([invoice_number], map: "idx_invoice_number")
+  @@index([order_id], map: "idx_invoice_order")
+  @@index([related_invoice_id], map: "idx_invoice_related")
+  @@index([status], map: "idx_invoice_status")
+  @@schema("billing")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model invoice_item {
+  invoice_item_id  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id       String      @db.Uuid
+  order_item_id    String?     @db.Uuid
+  description      String      @db.VarChar(300)
+  quantity         Int         @db.SmallInt
+  unit_price       Decimal     @db.Decimal(12, 2)
+  tax_rate         Decimal     @default(0.16) @db.Decimal(5, 4)
+  discount_amount  Decimal     @default(0) @db.Decimal(12, 2)
+  line_total       Decimal     @db.Decimal(12, 2)
+  sat_product_code String?     @db.VarChar(20)
+  sat_unit_code    String?     @db.VarChar(10)
+  invoice          invoice     @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade, onUpdate: NoAction)
+  order_item       order_item? @relation(fields: [order_item_id], references: [order_item_id], onUpdate: NoAction)
+
+  @@index([invoice_id], map: "idx_invoice_item_invoice")
+  @@schema("billing")
+}
+
+model tax_profile {
+  tax_profile_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  tax_id         String    @db.VarChar(30)
+  legal_name     String    @db.VarChar(200)
+  fiscal_address String
+  tax_regime     String?   @db.VarChar(100)
+  cfdi_use       String?   @db.VarChar(10)
+  country        String    @default("MX") @db.Char(2)
+  is_default     Boolean   @default(false)
+  is_verified    Boolean   @default(false)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  invoice        invoice[]
+  user           user      @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_tax_profile_user")
+  @@schema("billing")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model attribute_type {
+  attr_type_id                                                              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                                                      String               @db.VarChar(100)
+  slug                                                                      String               @unique @db.VarChar(100)
+  data_type                                                                 String               @db.VarChar(20)
+  unit                                                                      String?              @db.VarChar(30)
+  filterable                                                                Boolean              @default(false)
+  comparable                                                                Boolean              @default(false)
+  created_at                                                                DateTime             @default(now()) @db.Timestamptz(6)
+  product_attribute                                                         product_attribute[]
+  compatibility_rule_compatibility_rule_source_attr_type_idToattribute_type compatibility_rule[] @relation("compatibility_rule_source_attr_type_idToattribute_type")
+  compatibility_rule_compatibility_rule_target_attr_type_idToattribute_type compatibility_rule[] @relation("compatibility_rule_target_attr_type_idToattribute_type")
+
+  @@schema("catalog")
+}
+
+model brand {
+  brand_id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String    @unique @db.VarChar(100)
+  slug              String    @unique @db.VarChar(100)
+  logo_url          String?   @db.VarChar(500)
+  website           String?   @db.VarChar(200)
+  country_of_origin String?   @db.Char(2)
+  is_active         Boolean   @default(true)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  product           product[]
+
+  @@index([slug], map: "idx_brand_slug")
+  @@schema("catalog")
+}
+
+model category {
+  category_id    String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parent_id      String?    @db.Uuid
+  name           String     @db.VarChar(100)
+  slug           String     @unique @db.VarChar(100)
+  description    String?
+  icon_url       String?    @db.VarChar(500)
+  sort_order     Int        @default(0)
+  is_active      Boolean    @default(true)
+  level          Int        @default(0) @db.SmallInt
+  path           String?    @db.VarChar(500)
+  created_at     DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime   @default(now()) @db.Timestamptz(6)
+  category       category?  @relation("categoryTocategory", fields: [parent_id], references: [category_id], onUpdate: NoAction)
+  other_category category[] @relation("categoryTocategory")
+  product        product[]
+
+  @@index([is_active], map: "idx_category_active")
+  @@index([parent_id], map: "idx_category_parent")
+  @@index([slug], map: "idx_category_slug")
+  @@schema("catalog")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model product {
+  product_id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_id                  String              @db.Uuid
+  brand_id                     String              @db.Uuid
+  sku                          String              @unique @db.VarChar(50)
+  name                         String              @db.VarChar(200)
+  slug                         String              @unique @db.VarChar(200)
+  description                  String?
+  short_description            String?             @db.VarChar(500)
+  base_price                   Decimal             @db.Decimal(12, 2)
+  compare_price                Decimal?            @db.Decimal(12, 2)
+  cost_price                   Decimal?            @db.Decimal(12, 2)
+  weight_kg                    Decimal?            @db.Decimal(8, 3)
+  is_active                    Boolean             @default(true)
+  is_featured                  Boolean             @default(false)
+  requires_compatibility_check Boolean             @default(false)
+  avg_rating                   Decimal?            @db.Decimal(3, 2)
+  created_at                   DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime            @default(now()) @db.Timestamptz(6)
+  deleted_at                   DateTime?           @db.Timestamptz(6)
+  brand                        brand               @relation(fields: [brand_id], references: [brand_id], onDelete: NoAction, onUpdate: NoAction)
+  category                     category            @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction)
+  product_attribute            product_attribute[]
+  product_image                product_image[]
+  product_tag                  product_tag[]
+  product_variant              product_variant[]
+  product_role                 product_role[]
+  promotion_product            promotion_product[]
+  review                       review[]
+  wishlist                     wishlist[]
+
+  @@index([is_active], map: "idx_product_active")
+  @@index([brand_id], map: "idx_product_brand")
+  @@index([category_id], map: "idx_product_category")
+  @@index([sku], map: "idx_product_sku")
+  @@index([slug], map: "idx_product_slug")
+  @@schema("catalog")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model product_attribute {
+  product_attr_id String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id      String           @db.Uuid
+  attr_type_id    String           @db.Uuid
+  variant_id      String?          @db.Uuid
+  value_text      String?          @db.VarChar(500)
+  value_num       Decimal?         @db.Decimal(15, 4)
+  attribute_type  attribute_type   @relation(fields: [attr_type_id], references: [attr_type_id], onDelete: NoAction, onUpdate: NoAction)
+  product         product          @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  product_variant product_variant? @relation(fields: [variant_id], references: [variant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([product_id], map: "idx_pattr_product")
+  @@index([attr_type_id], map: "idx_pattr_type")
+  @@schema("catalog")
+}
+
+model product_image {
+  image_id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id      String           @db.Uuid
+  variant_id      String?          @db.Uuid
+  url             String           @db.VarChar(500)
+  alt_text        String?          @db.VarChar(200)
+  sort_order      Int              @default(0)
+  is_primary      Boolean          @default(false)
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  product         product          @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  product_variant product_variant? @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction)
+
+  @@index([product_id], map: "idx_image_product")
+  @@schema("catalog")
+}
+
+model product_tag {
+  product_id String  @db.Uuid
+  tag_id     String  @db.Uuid
+  product    product @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  tag        tag     @relation(fields: [tag_id], references: [tag_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([product_id, tag_id])
+  @@schema("catalog")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model product_variant {
+  variant_id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id        String              @db.Uuid
+  sku_variant       String              @unique @db.VarChar(80)
+  name              String              @db.VarChar(200)
+  price_modifier    Decimal             @default(0) @db.Decimal(12, 2)
+  stock_qty         Int                 @default(0)
+  stock_reserved    Int                 @default(0)
+  is_active         Boolean             @default(true)
+  barcode           String?             @db.VarChar(100)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  product_attribute product_attribute[]
+  product_image     product_image[]
+  product           product             @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  build_item        build_item[]
+  cart_item         cart_item[]
+  order_item        order_item[]
+  stock_movement    stock_movement[]
+
+  @@index([product_id], map: "idx_variant_product")
+  @@index([sku_variant], map: "idx_variant_sku")
+  @@schema("catalog")
+}
+
+model tag {
+  tag_id      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String        @unique @db.VarChar(80)
+  slug        String        @unique @db.VarChar(80)
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  product_tag product_tag[]
+
+  @@schema("catalog")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model build {
+  build_id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String?               @db.Uuid
+  group_id            String                @db.Uuid
+  name                String                @default("Mi configuración") @db.VarChar(150)
+  status              String                @default("draft") @db.VarChar(20)
+  total_price         Decimal               @default(0) @db.Decimal(12, 2)
+  is_public           Boolean               @default(false)
+  share_token         String?               @unique @db.VarChar(64)
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  compatibility_group compatibility_group   @relation(fields: [group_id], references: [group_id], onDelete: NoAction, onUpdate: NoAction)
+  user                user?                 @relation(fields: [user_id], references: [user_id], onUpdate: NoAction)
+  build_compat_result build_compat_result[]
+  build_item          build_item[]
+  cart_item           cart_item[]
+  order_item          order_item[]
+
+  @@index([group_id], map: "idx_build_group")
+  @@index([is_public], map: "idx_build_public", where: raw("(is_public = true)"))
+  @@index([share_token], map: "idx_build_token")
+  @@index([user_id], map: "idx_build_user")
+  @@schema("compat")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model build_compat_result {
+  result_id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  build_id           String             @db.Uuid
+  rule_id            String             @db.Uuid
+  passed             Boolean
+  severity           String             @db.VarChar(10)
+  message            String
+  checked_at         DateTime           @default(now()) @db.Timestamptz(6)
+  build              build              @relation(fields: [build_id], references: [build_id], onDelete: Cascade, onUpdate: NoAction)
+  compatibility_rule compatibility_rule @relation(fields: [rule_id], references: [rule_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([build_id], map: "idx_compat_result_build")
+  @@schema("compat")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model build_item {
+  build_item_id   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  build_id        String          @db.Uuid
+  role_id         String          @db.Uuid
+  variant_id      String          @db.Uuid
+  quantity        Int             @default(1) @db.SmallInt
+  unit_price      Decimal         @db.Decimal(12, 2)
+  added_at        DateTime        @default(now()) @db.Timestamptz(6)
+  build           build           @relation(fields: [build_id], references: [build_id], onDelete: Cascade, onUpdate: NoAction)
+  component_role  component_role  @relation(fields: [role_id], references: [role_id], onDelete: NoAction, onUpdate: NoAction)
+  product_variant product_variant @relation(fields: [variant_id], references: [variant_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([build_id], map: "idx_build_item_build")
+  @@index([variant_id], map: "idx_build_item_variant")
+  @@schema("compat")
+}
+
+model compatibility_group {
+  group_id       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String           @db.VarChar(100)
+  description    String?
+  is_active      Boolean          @default(true)
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  build          build[]
+  component_role component_role[]
+
+  @@schema("compat")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model compatibility_rule {
+  rule_id                                                               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_attr_type_id                                                   String                @db.Uuid
+  target_attr_type_id                                                   String                @db.Uuid
+  source_role_id                                                        String                @db.Uuid
+  target_role_id                                                        String                @db.Uuid
+  operator                                                              String                @db.VarChar(10)
+  rule_type                                                             String                @db.VarChar(10)
+  message                                                               String
+  is_active                                                             Boolean               @default(true)
+  created_at                                                            DateTime              @default(now()) @db.Timestamptz(6)
+  build_compat_result                                                   build_compat_result[]
+  attribute_type_compatibility_rule_source_attr_type_idToattribute_type attribute_type        @relation("compatibility_rule_source_attr_type_idToattribute_type", fields: [source_attr_type_id], references: [attr_type_id], onDelete: NoAction, onUpdate: NoAction)
+  component_role_compatibility_rule_source_role_idTocomponent_role      component_role        @relation("compatibility_rule_source_role_idTocomponent_role", fields: [source_role_id], references: [role_id], onDelete: NoAction, onUpdate: NoAction)
+  attribute_type_compatibility_rule_target_attr_type_idToattribute_type attribute_type        @relation("compatibility_rule_target_attr_type_idToattribute_type", fields: [target_attr_type_id], references: [attr_type_id], onDelete: NoAction, onUpdate: NoAction)
+  component_role_compatibility_rule_target_role_idTocomponent_role      component_role        @relation("compatibility_rule_target_role_idTocomponent_role", fields: [target_role_id], references: [role_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([source_role_id], map: "idx_compat_rule_source_role")
+  @@index([target_role_id], map: "idx_compat_rule_target_role")
+  @@schema("compat")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model component_role {
+  role_id                                                              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id                                                             String               @db.Uuid
+  name                                                                 String               @db.VarChar(80)
+  slug                                                                 String               @unique @db.VarChar(80)
+  is_required                                                          Boolean              @default(true)
+  max_quantity                                                         Int                  @default(1) @db.SmallInt
+  sort_order                                                           Int                  @default(0)
+  created_at                                                           DateTime             @default(now()) @db.Timestamptz(6)
+  build_item                                                           build_item[]
+  compatibility_rule_compatibility_rule_source_role_idTocomponent_role compatibility_rule[] @relation("compatibility_rule_source_role_idTocomponent_role")
+  compatibility_rule_compatibility_rule_target_role_idTocomponent_role compatibility_rule[] @relation("compatibility_rule_target_role_idTocomponent_role")
+  compatibility_group                                                  compatibility_group  @relation(fields: [group_id], references: [group_id], onDelete: Cascade, onUpdate: NoAction)
+  product_role                                                         product_role[]
+
+  @@index([group_id], map: "idx_component_role_group")
+  @@schema("compat")
+}
+
+model product_role {
+  product_id     String         @db.Uuid
+  role_id        String         @db.Uuid
+  product        product        @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  component_role component_role @relation(fields: [role_id], references: [role_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([product_id, role_id])
+  @@index([product_id], map: "idx_product_role_product")
+  @@index([role_id], map: "idx_product_role_role")
+  @@schema("compat")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model promotion {
+  promo_id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String              @db.VarChar(150)
+  type              String              @db.VarChar(20)
+  discount_percent  Decimal?            @db.Decimal(5, 2)
+  starts_at         DateTime            @db.Timestamptz(6)
+  ends_at           DateTime            @db.Timestamptz(6)
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  promotion_product promotion_product[]
+
+  @@index([is_active], map: "idx_promo_active")
+  @@index([starts_at, ends_at], map: "idx_promo_dates")
+  @@schema("content")
+}
+
+model promotion_product {
+  promo_id   String    @db.Uuid
+  product_id String    @db.Uuid
+  product    product   @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  promotion  promotion @relation(fields: [promo_id], references: [promo_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([promo_id, product_id])
+  @@schema("content")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model review {
+  review_id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id           String      @db.Uuid
+  user_id              String      @db.Uuid
+  order_item_id        String?     @db.Uuid
+  rating               Int         @db.SmallInt
+  title                String?     @db.VarChar(200)
+  body                 String?
+  is_verified_purchase Boolean     @default(false)
+  status               String      @default("pending") @db.VarChar(15)
+  helpful_count        Int         @default(0)
+  created_at           DateTime    @default(now()) @db.Timestamptz(6)
+  order_item           order_item? @relation(fields: [order_item_id], references: [order_item_id], onUpdate: NoAction)
+  product              product     @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  user                 user        @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, product_id])
+  @@index([product_id], map: "idx_review_product")
+  @@index([status], map: "idx_review_status")
+  @@schema("content")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notification {
+  notification_id       String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id               String                 @db.Uuid
+  template_id           String?                @db.Uuid
+  channel               String                 @db.VarChar(15)
+  status                String                 @default("pending") @db.VarChar(15)
+  subject               String?                @db.VarChar(200)
+  body                  String?
+  entity_type           String?                @db.VarChar(50)
+  entity_id             String?                @db.Uuid
+  sent_at               DateTime?              @db.Timestamptz(6)
+  read_at               DateTime?              @db.Timestamptz(6)
+  created_at            DateTime               @default(now()) @db.Timestamptz(6)
+  notification_template notification_template? @relation(fields: [template_id], references: [template_id], onUpdate: NoAction)
+  user                  user                   @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_notif_created")
+  @@index([status], map: "idx_notif_status")
+  @@index([user_id], map: "idx_notif_user")
+  @@schema("notifications")
+}
+
+model notification_preference {
+  pref_id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String  @db.Uuid
+  event          String  @db.VarChar(100)
+  email_enabled  Boolean @default(true)
+  sms_enabled    Boolean @default(false)
+  push_enabled   Boolean @default(true)
+  in_app_enabled Boolean @default(true)
+  user           user    @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, event])
+  @@index([user_id], map: "idx_notif_pref_user")
+  @@schema("notifications")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notification_template {
+  template_id  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event        String         @unique @db.VarChar(100)
+  channel      String         @db.VarChar(15)
+  subject      String?        @db.VarChar(200)
+  body_html    String?
+  body_plain   String?
+  variables    Json           @default("[]")
+  is_active    Boolean        @default(true)
+  created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime       @default(now()) @db.Timestamptz(6)
+  notification notification[]
+
+  @@schema("notifications")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model cart {
+  cart_id       String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String?     @db.Uuid
+  session_token String?     @db.VarChar(100)
+  expires_at    DateTime    @default(dbgenerated("(now() + '7 days'::interval)")) @db.Timestamptz(6)
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime    @default(now()) @db.Timestamptz(6)
+  user          user?       @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  cart_item     cart_item[]
+
+  @@index([expires_at], map: "idx_cart_expires")
+  @@index([session_token], map: "idx_cart_session")
+  @@index([user_id], map: "idx_cart_user")
+  @@schema("orders")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model cart_item {
+  cart_item_id    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cart_id         String          @db.Uuid
+  variant_id      String          @db.Uuid
+  build_id        String?         @db.Uuid
+  quantity        Int             @default(1) @db.SmallInt
+  unit_price      Decimal         @db.Decimal(12, 2)
+  added_at        DateTime        @default(now()) @db.Timestamptz(6)
+  build           build?          @relation(fields: [build_id], references: [build_id], onUpdate: NoAction)
+  cart            cart            @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade, onUpdate: NoAction)
+  product_variant product_variant @relation(fields: [variant_id], references: [variant_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([cart_id, variant_id])
+  @@index([cart_id], map: "idx_cart_item_cart")
+  @@index([variant_id], map: "idx_cart_item_variant")
+  @@schema("orders")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model coupon {
+  coupon_id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code             String    @unique @db.VarChar(30)
+  discount_type    String    @db.VarChar(10)
+  discount_value   Decimal   @db.Decimal(10, 2)
+  min_order_amount Decimal   @default(0) @db.Decimal(12, 2)
+  max_uses         Int?
+  used_count       Int       @default(0)
+  expires_at       DateTime? @db.Timestamptz(6)
+  is_active        Boolean   @default(true)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  order            order[]
+
+  @@index([is_active], map: "idx_coupon_active")
+  @@index([code], map: "idx_coupon_code")
+  @@schema("orders")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model order {
+  order_id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String           @db.Uuid
+  shipping_address_id String           @db.Uuid
+  coupon_id           String?          @db.Uuid
+  order_number        String           @unique @db.VarChar(30)
+  status              String           @default("pending") @db.VarChar(20)
+  subtotal            Decimal          @default(0) @db.Decimal(12, 2)
+  discount_amount     Decimal          @default(0) @db.Decimal(12, 2)
+  tax_amount          Decimal          @default(0) @db.Decimal(12, 2)
+  shipping_amount     Decimal          @default(0) @db.Decimal(12, 2)
+  total               Decimal          @default(0) @db.Decimal(12, 2)
+  notes               String?
+  created_at          DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime         @default(now()) @db.Timestamptz(6)
+  invoice             invoice[]
+  coupon              coupon?          @relation(fields: [coupon_id], references: [coupon_id], onDelete: NoAction, onUpdate: NoAction)
+  address             address          @relation(fields: [shipping_address_id], references: [address_id], onDelete: NoAction, onUpdate: NoAction)
+  user                user             @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  order_item          order_item[]
+  payment             payment[]
+  return_request      return_request[]
+
+  @@index([created_at(sort: Desc)], map: "idx_order_created")
+  @@index([order_number], map: "idx_order_number")
+  @@index([status], map: "idx_order_status")
+  @@index([user_id], map: "idx_order_user")
+  @@schema("orders")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model order_item {
+  order_item_id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id              String           @db.Uuid
+  variant_id            String           @db.Uuid
+  build_id              String?          @db.Uuid
+  product_name_snapshot String           @db.VarChar(200)
+  sku_snapshot          String           @db.VarChar(80)
+  quantity              Int              @db.SmallInt
+  unit_price            Decimal          @db.Decimal(12, 2)
+  line_total            Decimal          @db.Decimal(12, 2)
+  invoice_item          invoice_item[]
+  review                review[]
+  build                 build?           @relation(fields: [build_id], references: [build_id], onUpdate: NoAction)
+  order                 order            @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction)
+  product_variant       product_variant  @relation(fields: [variant_id], references: [variant_id], onDelete: NoAction, onUpdate: NoAction)
+  return_item           return_item[]
+  stock_movement        stock_movement[]
+
+  @@index([order_id], map: "idx_order_item_order")
+  @@index([variant_id], map: "idx_order_item_variant")
+  @@schema("orders")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payment {
+  payment_id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id         String    @db.Uuid
+  method           String    @db.VarChar(20)
+  status           String    @default("pending") @db.VarChar(20)
+  amount           Decimal   @db.Decimal(12, 2)
+  gateway_ref      String?   @db.VarChar(200)
+  gateway_response Json?
+  paid_at          DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  order            order     @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id], map: "idx_payment_order")
+  @@index([status], map: "idx_payment_status")
+  @@schema("orders")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model return_item {
+  return_item_id String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  return_id      String           @db.Uuid
+  order_item_id  String           @db.Uuid
+  quantity       Int              @db.SmallInt
+  condition      String           @db.VarChar(15)
+  restock        Boolean          @default(false)
+  refund_amount  Decimal          @default(0) @db.Decimal(12, 2)
+  order_item     order_item       @relation(fields: [order_item_id], references: [order_item_id], onDelete: NoAction, onUpdate: NoAction)
+  return_request return_request   @relation(fields: [return_id], references: [return_id], onDelete: Cascade, onUpdate: NoAction)
+  stock_movement stock_movement[]
+
+  @@index([return_id], map: "idx_return_item_return")
+  @@schema("returns")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model return_request {
+  return_id                            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                             String        @db.Uuid
+  user_id                              String        @db.Uuid
+  handled_by                           String?       @db.Uuid
+  return_number                        String        @unique @db.VarChar(30)
+  reason                               String        @db.VarChar(30)
+  status                               String        @default("pending") @db.VarChar(20)
+  resolution                           String?       @db.VarChar(20)
+  customer_notes                       String?
+  staff_notes                          String?
+  refund_amount                        Decimal?      @default(0) @db.Decimal(12, 2)
+  created_at                           DateTime      @default(now()) @db.Timestamptz(6)
+  resolved_at                          DateTime?     @db.Timestamptz(6)
+  return_item                          return_item[]
+  user_return_request_handled_byTouser user?         @relation("return_request_handled_byTouser", fields: [handled_by], references: [user_id], onUpdate: NoAction)
+  order                                order         @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction)
+  user_return_request_user_idTouser    user          @relation("return_request_user_idTouser", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id], map: "idx_return_order")
+  @@index([status], map: "idx_return_status")
+  @@index([user_id], map: "idx_return_user")
+  @@schema("returns")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model stock_movement {
+  movement_id     String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variant_id      String          @db.Uuid
+  order_item_id   String?         @db.Uuid
+  return_item_id  String?         @db.Uuid
+  created_by      String?         @db.Uuid
+  type            String          @db.VarChar(15)
+  quantity        Int
+  stock_before    Int
+  stock_after     Int
+  notes           String?
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  user            user?           @relation(fields: [created_by], references: [user_id], onUpdate: NoAction)
+  order_item      order_item?     @relation(fields: [order_item_id], references: [order_item_id], onUpdate: NoAction)
+  return_item     return_item?    @relation(fields: [return_item_id], references: [return_item_id], onUpdate: NoAction)
+  product_variant product_variant @relation(fields: [variant_id], references: [variant_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_stock_created")
+  @@index([type], map: "idx_stock_type")
+  @@index([variant_id], map: "idx_stock_variant")
+  @@schema("returns")
+}
+
+model address {
+  address_id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String   @db.Uuid
+  alias          String?  @db.VarChar(50)
+  recipient_name String   @db.VarChar(160)
+  street_line1   String   @db.VarChar(200)
+  street_line2   String?  @db.VarChar(200)
+  city           String   @db.VarChar(100)
+  state          String   @db.VarChar(100)
+  zip_code       String   @db.VarChar(20)
+  country        String   @default("MX") @db.Char(2)
+  phone          String?  @db.VarChar(30)
+  is_default     Boolean  @default(false)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  order          order[]
+  user           user     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_address_user")
+  @@schema("users")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model permission {
+  permission_id   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  resource        String            @db.VarChar(80)
+  action          String            @db.VarChar(20)
+  slug            String            @unique @db.VarChar(120)
+  description     String?           @db.VarChar(300)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  role_permission role_permission[]
+
+  @@schema("users")
+}
+
+model role {
+  role_id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String            @unique @db.VarChar(80)
+  slug            String            @unique @db.VarChar(80)
+  description     String?
+  is_system       Boolean           @default(false)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  role_permission role_permission[]
+  user_role       user_role[]
+
+  @@schema("users")
+}
+
+model role_permission {
+  role_id       String     @db.Uuid
+  permission_id String     @db.Uuid
+  granted_at    DateTime   @default(now()) @db.Timestamptz(6)
+  granted_by    String?    @db.Uuid
+  user          user?      @relation(fields: [granted_by], references: [user_id], onUpdate: NoAction)
+  permission    permission @relation(fields: [permission_id], references: [permission_id], onDelete: Cascade, onUpdate: NoAction)
+  role          role       @relation(fields: [role_id], references: [role_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([role_id, permission_id])
+  @@schema("users")
+}
+
+model user {
+  user_id                                        String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                          String                    @unique @db.VarChar(200)
+  password_hash                                  String                    @db.VarChar(255)
+  first_name                                     String                    @db.VarChar(80)
+  last_name                                      String                    @db.VarChar(80)
+  phone                                          String?                   @db.VarChar(30)
+  is_active                                      Boolean                   @default(true)
+  is_customer                                    Boolean                   @default(true)
+  email_verified_at                              DateTime?                 @db.Timestamptz(6)
+  avatar_url                                     String?                   @db.VarChar(500)
+  created_at                                     DateTime                  @default(now()) @db.Timestamptz(6)
+  last_login_at                                  DateTime?                 @db.Timestamptz(6)
+  audit_log                                      audit_log[]
+  search_log                                     search_log[]
+  tax_profile                                    tax_profile[]
+  build                                          build[]
+  review                                         review[]
+  notification                                   notification[]
+  notification_preference                        notification_preference[]
+  cart                                           cart[]
+  order                                          order[]
+  return_request_return_request_handled_byTouser return_request[]          @relation("return_request_handled_byTouser")
+  return_request_return_request_user_idTouser    return_request[]          @relation("return_request_user_idTouser")
+  stock_movement                                 stock_movement[]
+  address                                        address[]
+  role_permission                                role_permission[]
+  user_role_user_role_assigned_byTouser          user_role[]               @relation("user_role_assigned_byTouser")
+  user_role_user_role_user_idTouser              user_role[]               @relation("user_role_user_idTouser")
+  wishlist                                       wishlist[]
+
+  @@index([is_active], map: "idx_user_active")
+  @@index([email], map: "idx_user_email")
+  @@schema("users")
+}
+
+model user_role {
+  user_id                          String    @db.Uuid
+  role_id                          String    @db.Uuid
+  assigned_at                      DateTime  @default(now()) @db.Timestamptz(6)
+  assigned_by                      String?   @db.Uuid
+  expires_at                       DateTime? @db.Timestamptz(6)
+  user_user_role_assigned_byTouser user?     @relation("user_role_assigned_byTouser", fields: [assigned_by], references: [user_id], onUpdate: NoAction)
+  role                             role      @relation(fields: [role_id], references: [role_id], onDelete: Cascade, onUpdate: NoAction)
+  user_user_role_user_idTouser     user      @relation("user_role_user_idTouser", fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, role_id])
+  @@index([role_id], map: "idx_user_role_role")
+  @@index([user_id], map: "idx_user_role_user")
+  @@schema("users")
+}
+
+model wishlist {
+  wishlist_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  product_id  String   @db.Uuid
+  added_at    DateTime @default(now()) @db.Timestamptz(6)
+  product     product  @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  user        user     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, product_id])
+  @@index([user_id], map: "idx_wishlist_user")
+  @@schema("users")
+}
