@@ -1,13 +1,7 @@
 import 'dotenv/config';
 import { env } from './config/env';
 import { prisma } from './lib/prisma';
-import express from 'express';
-
-const app = express();
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'UP', timestamp: new Date().toISOString() });
-});
+import app from './app';
 
 app.listen(env.PORT, async () => {
   await prisma.$connect();
