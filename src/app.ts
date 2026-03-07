@@ -11,6 +11,7 @@ import { traceId } from "./middleware/traceId";
 import healthRouter from './modules/health/health.router';
 import authRouter from './modules/auth/auth.router';
 import catalogRouter from './modules/catalog/catalog.router'
+import cartRouter from './modules/cart/cart.routes';
 
 const app = express();
 
@@ -33,6 +34,8 @@ app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 // Catalog
 app.use('/catalog', catalogRouter);
+// Cart
+app.use('/cart', cartRouter);
 
 // Manejador de Errores
 app.use(errorHandler);
