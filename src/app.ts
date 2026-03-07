@@ -12,6 +12,7 @@ import healthRouter from './modules/health/health.router';
 import authRouter from './modules/auth/auth.router';
 import catalogRouter from './modules/catalog/catalog.router'
 import cartRouter from './modules/cart/cart.routes';
+import ordersRouter from './modules/orders/orders.router'
 
 const app = express();
 
@@ -36,6 +37,8 @@ app.use('/auth', authRouter);
 app.use('/catalog', catalogRouter);
 // Cart
 app.use('/cart', cartRouter);
+// Orders
+app.use('/orders', ordersRouter);
 
 // Manejador de Errores
 app.use(errorHandler);
