@@ -10,6 +10,7 @@ import { traceId } from "./middleware/traceId";
 
 import healthRouter from './modules/health/health.router';
 import authRouter from './modules/auth/auth.router';
+import catalogRouter from './modules/catalog/catalog.router'
 
 const app = express();
 
@@ -30,6 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/health', healthRouter);
 // Auth
 app.use('/auth', authRouter);
+// Catalog
+app.use('/catalog', catalogRouter);
 
 // Manejador de Errores
 app.use(errorHandler);

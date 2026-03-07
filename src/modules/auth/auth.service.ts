@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { authRepository } from './auth.repository';
-import { signAccessToken, signRefreshToken, verifyToken } from '../../lib/jwt';
+import { signAccessToken, signRefreshToken, verifyAccessToken } from '../../lib/jwt';
 import { sanitizeObject } from '../../util/sanitizer';
 import type { RegisterInput, LoginInput, ResetPasswordInput } from './auth.schema';
 
