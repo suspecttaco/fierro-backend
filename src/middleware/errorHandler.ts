@@ -12,6 +12,7 @@ export const errorHandler = (
     res: Response,
     next: NextFunction
 ) => {
+    console.error('ERROR:', err); // temporal
     // Error de validacion Zod
     if (err instanceof ZodError) {
         return res.status(400).json({

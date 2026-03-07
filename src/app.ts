@@ -2,12 +2,14 @@ import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { env } from "./config/env";
 import { errorHandler } from "./middleware/errorHandler";
 import { traceId } from "./middleware/traceId";
 
 
-import healthRouter from './modules/health/health.router'
+import healthRouter from './modules/health/health.router';
+import authRouter from './modules/auth/auth.router';
 
 const app = express();
 
@@ -21,10 +23,13 @@ app.use(cors({
 
 // Parseo
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
-app.use('/health', healthRouter)
+app.use('/health', healthRouter);
+// Auth
+app.use('/auth', authRouter);
 
 // Manejador de Errores
 app.use(errorHandler);

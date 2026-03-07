@@ -12,6 +12,12 @@ export interface JwtPayload {
     role: string;
 }
 
+export const signAccessToken = (payload: JwtPayload): string => 
+    jwt.sign(payload,privateKey, {
+        algorithm: 'RS256',
+        expiresIn: env.JWT_ACCESS_EXPIRY as jwt.SignOptions['expiresIn'],
+    });
+
 export const signRefreshToken = (payload: Pick<JwtPayload, 'sub'>): string => {
     return jwt.sign(payload, privateKey, {
         algorithm: 'RS256',

@@ -784,18 +784,18 @@ model role_permission {
 }
 
 model user {
-  user_id                                        String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                                          String                    @unique @db.VarChar(200)
-  password_hash                                  String                    @db.VarChar(255)
-  first_name                                     String                    @db.VarChar(80)
-  last_name                                      String                    @db.VarChar(80)
-  phone                                          String?                   @db.VarChar(30)
-  is_active                                      Boolean                   @default(true)
-  is_customer                                    Boolean                   @default(true)
-  email_verified_at                              DateTime?                 @db.Timestamptz(6)
-  avatar_url                                     String?                   @db.VarChar(500)
-  created_at                                     DateTime                  @default(now()) @db.Timestamptz(6)
-  last_login_at                                  DateTime?                 @db.Timestamptz(6)
+  user_id                                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                          String                     @unique @db.VarChar(200)
+  password_hash                                  String                     @db.VarChar(255)
+  first_name                                     String                     @db.VarChar(80)
+  last_name                                      String                     @db.VarChar(80)
+  phone                                          String?                    @db.VarChar(30)
+  is_active                                      Boolean                    @default(true)
+  is_customer                                    Boolean                    @default(true)
+  email_verified_at                              DateTime?                  @db.Timestamptz(6)
+  avatar_url                                     String?                    @db.VarChar(500)
+  created_at                                     DateTime                   @default(now()) @db.Timestamptz(6)
+  last_login_at                                  DateTime?                  @db.Timestamptz(6)
   audit_log                                      audit_log[]
   search_log                                     search_log[]
   tax_profile                                    tax_profile[]
@@ -805,13 +805,16 @@ model user {
   notification_preference                        notification_preference[]
   cart                                           cart[]
   order                                          order[]
-  return_request_return_request_handled_byTouser return_request[]          @relation("return_request_handled_byTouser")
-  return_request_return_request_user_idTouser    return_request[]          @relation("return_request_user_idTouser")
+  return_request_return_request_handled_byTouser return_request[]           @relation("return_request_handled_byTouser")
+  return_request_return_request_user_idTouser    return_request[]           @relation("return_request_user_idTouser")
   stock_movement                                 stock_movement[]
   address                                        address[]
+  email_verification_token                       email_verification_token[]
+  password_reset_token                           password_reset_token[]
+  refresh_token                                  refresh_token[]
   role_permission                                role_permission[]
-  user_role_user_role_assigned_byTouser          user_role[]               @relation("user_role_assigned_byTouser")
-  user_role_user_role_user_idTouser              user_role[]               @relation("user_role_user_idTouser")
+  user_role_user_role_assigned_byTouser          user_role[]                @relation("user_role_assigned_byTouser")
+  user_role_user_role_user_idTouser              user_role[]                @relation("user_role_user_idTouser")
   wishlist                                       wishlist[]
 
   @@index([is_active], map: "idx_user_active")
@@ -845,5 +848,41 @@ model wishlist {
 
   @@unique([user_id, product_id])
   @@index([user_id], map: "idx_wishlist_user")
+  @@schema("users")
+}
+
+model email_verification_token {
+  email_verification_token_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                     String    @db.Uuid
+  token                       String    @unique @db.VarChar(255)
+  expires_at                  DateTime  @db.Timestamptz(6)
+  used_at                     DateTime? @db.Timestamptz(6)
+  created_at                  DateTime  @default(now()) @db.Timestamptz(6)
+  user                        user      @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("users")
+}
+
+model password_reset_token {
+  password_reset_token_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                 String    @db.Uuid
+  token                   String    @unique @db.VarChar(255)
+  expires_at              DateTime  @db.Timestamptz(6)
+  used_at                 DateTime? @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  user                    user      @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("users")
+}
+
+model refresh_token {
+  refresh_token_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @db.Uuid
+  token_hash       String    @db.VarChar(255)
+  expires_at       DateTime  @db.Timestamptz(6)
+  revoked_at       DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  user             user      @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
   @@schema("users")
 }
