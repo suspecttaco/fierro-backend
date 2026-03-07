@@ -25,6 +25,6 @@ export const signRefreshToken = (payload: Pick<JwtPayload, 'sub'>): string => {
     });
 };
 
-export const verifyToken = (token: string): JwtPayload => {
+export const verifyAccessToken = (token: string): JwtPayload => {
     return jwt.verify(token, publicKey, {algorithms: ['RS256']}) as JwtPayload;
 };
