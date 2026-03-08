@@ -14,6 +14,7 @@ import catalogRouter from './modules/catalog/catalog.router'
 import cartRouter from './modules/cart/cart.router';
 import ordersRouter from './modules/orders/orders.router'
 import billingRouter from './modules/billing/billing.router'
+import returnsRouter from './modules/returns/returns.router';
 
 const app = express();
 
@@ -42,6 +43,8 @@ app.use('/cart', cartRouter);
 app.use('/orders', ordersRouter);
 // Billing
 app.use('/billing', billingRouter);
+// Returns
+app.use('/returns', returnsRouter);
 
 // Manejador de Errores
 app.use(errorHandler);
