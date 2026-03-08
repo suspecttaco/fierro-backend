@@ -3,6 +3,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 import 'dotenv/config';
+import './jobs'
 import { env } from './config/env';
 import { prisma } from './lib/prisma';
 import app from './app';
