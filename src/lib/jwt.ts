@@ -1,10 +1,9 @@
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
-import { env } from "../config/env";
-import { Payload } from '@prisma/client/runtime/client';
+import { env } from '../config/env';
 
-const privateKey = fs.readFileSync(env.JWT_PRIVATE_KEY_PATH, 'utf-8');
-const publicKey = fs.readFileSync(env.JWT_PUBLIC_KEY_PATH, 'utf-8');
+const privateKey = env.JWT_PRIVATE_KEY || fs.readFileSync(env.JWT_PRIVATE_KEY_PATH, 'utf8');
+const publicKey  = env.JWT_PUBLIC_KEY  || fs.readFileSync(env.JWT_PUBLIC_KEY_PATH,  'utf8');
 
 export interface JwtPayload {
     sub: string;    // userId

@@ -1,7 +1,3 @@
-if (process.env.NODE_ENV !== 'production') {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
-
 import 'dotenv/config';
 import './jobs'
 import { env } from './config/env';
