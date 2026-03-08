@@ -18,6 +18,7 @@ import billingRouter from './modules/billing/billing.router';
 import returnsRouter from './modules/returns/returns.router';
 import reviewsRouter from './modules/reviews/reviews.router';
 import adminRouter from './modules/admin/admin.router';
+import notificationsRouter from './modules/notifications/notifications.router'
 
 const app = express();
 
@@ -54,6 +55,8 @@ app.use('/returns', returnsRouter);
 app.use('/reviews', reviewsRouter);
 // Admin
 app.use('/admin', adminRouter);
+// Notifications
+app.use('/notifications', notificationsRouter);
 
 // Manejador de Errores
 app.use(errorHandler);
