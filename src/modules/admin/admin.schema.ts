@@ -60,6 +60,11 @@ export const UpdateUserSchema = z.object({
   isCustomer: z.boolean().optional(),
 });
 
+export const AssignRoleSchema = z.object({
+  roleSlug: z.enum(['admin', 'staff', 'customer']),
+});
+
+export type AssignRoleInput       = z.infer<typeof AssignRoleSchema>;
 export type CreateProductInput    = z.infer<typeof CreateProductSchema>;
 export type UpdateProductInput    = z.infer<typeof UpdateProductSchema>;
 export type CreateVariantInput    = z.infer<typeof CreateVariantSchema>;

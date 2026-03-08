@@ -6,7 +6,10 @@ export const authRepository = {
     return prisma.user.findUnique({
       where: { email },
       include: {
-        user_role_user_role_user_idTouser: { include: { role: true } }
+        user_role_user_role_user_idTouser: { 
+          include: { role: true },
+          orderBy: { assigned_at: 'desc' },
+        }
       },
     });
   },

@@ -33,4 +33,7 @@ router.put('/users/:id',                    ...isAdmin, adminController.updateUs
 // Reportes
 router.get('/reports/sales',                ...isAdmin, adminController.getSalesReport);
 
+// Activar Admin
+router.post('/users/:id/role', ...isAdmin, adminController.assignRole);
+
 export default router;

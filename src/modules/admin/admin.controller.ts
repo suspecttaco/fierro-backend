@@ -5,6 +5,7 @@ import {
   CreateVariantSchema, UpdateVariantSchema,
   StockAdjustmentSchema, CreateCategorySchema,
   CreateBrandSchema, UpdateUserSchema,
+  AssignRoleSchema,
 } from './admin.schema';
 
 export const adminController = {
@@ -128,6 +129,14 @@ export const adminController = {
         return;
       }
       const result = await adminService.getSalesReport(from, to);
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  assignRole: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = AssignRoleSchema.parse(req.body);
+      const result = await adminService.assignRole(req.params.id as string, input);
       res.json(result);
     } catch (err) { next(err); }
   },

@@ -9,6 +9,7 @@ import type {
   CreateCategoryInput,
   CreateBrandInput,
   UpdateUserInput,
+  AssignRoleInput,
 } from "./admin.schema";
 
 export const adminService = {
@@ -180,5 +181,9 @@ export const adminService = {
     );
 
     return { totalRevenue, totalOrders, totalItems, orders };
+  },
+
+  assignRole: async (userId: string, input: AssignRoleInput) => {
+    return adminRepository.assignRole(userId, input.roleSlug);
   },
 };

@@ -138,4 +138,15 @@ export const adminRepository = {
       orderBy: { created_at: 'desc' },
     });
   },
+
+  assignRole: async (userId: string, roleSlug: string) => {
+    const role = await prisma.role.findFirst({ where: { slug: roleSlug } });
+    if (!role) throw new Error('Rol no encontrado');
+    
+    return prisma.user_role.upsert({
+      where: { user_id_role_id: { user_id: userId, role_id: role.role_id } },
+      update: {},
+      create: { user_id: userId, role_id: role.role_id },
+    });
+  },
 };
