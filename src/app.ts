@@ -10,13 +10,14 @@ import { traceId } from "./middleware/traceId";
 // Routers
 import healthRouter from './modules/health/health.router';
 import authRouter from './modules/auth/auth.router';
-import catalogRouter from './modules/catalog/catalog.router'
+import catalogRouter from './modules/catalog/catalog.router';
+import buildsRouter from './modules/builds/builds.router';
 import cartRouter from './modules/cart/cart.router';
-import ordersRouter from './modules/orders/orders.router'
-import billingRouter from './modules/billing/billing.router'
+import ordersRouter from './modules/orders/orders.router';
+import billingRouter from './modules/billing/billing.router';
 import returnsRouter from './modules/returns/returns.router';
 import reviewsRouter from './modules/reviews/reviews.router';
-import adminRouter from './modules/admin/admin.router'
+import adminRouter from './modules/admin/admin.router';
 
 const app = express();
 
@@ -39,6 +40,8 @@ app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 // Catalog
 app.use('/catalog', catalogRouter);
+// Builds
+app.use('/builds', buildsRouter);
 // Cart
 app.use('/cart', cartRouter);
 // Orders
