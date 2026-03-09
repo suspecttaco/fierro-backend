@@ -33,4 +33,10 @@ export const catalogController = {
       res.json(result);
     } catch (err) { next(err); }
   },
+
+  getVariantById: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await catalogService.getVariantById(req.params.variantId as string));
+    } catch (e) { next(e); }
+  },
 };

@@ -84,4 +84,15 @@ export const catalogRepository = {
       select: { brand_id: true, name: true, slug: true, logo_url: true },
     });
   },
+
+  findVariantById: async (variantId: string) => {
+    return prisma.product_variant.findUnique({
+      where:   { variant_id: variantId },
+      include: {
+        product:           { include: { brand: true, category: true } },
+        product_image:     true,
+        product_attribute: { include: { attribute_type: true } },
+      },
+    });
+  },
 };

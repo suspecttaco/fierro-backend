@@ -7,5 +7,6 @@ router.get('/products', catalogController.getProducts);
 router.get('/products/:slug', catalogController.getProductBySlug);
 router.get('/categories', catalogController.getCategories);
 router.get('/brands', catalogController.getBrands);
+router.get('/variants/:variantId', catalogController.getVariantById);
 
 export default router;

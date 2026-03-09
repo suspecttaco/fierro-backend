@@ -1,5 +1,6 @@
 import { catalogRepository } from './catalog.repository';
 import type { ProductListInput } from './catalog.schema';
+import { AppError } from '../../util/errors';
 
 export const catalogService = {
 
@@ -99,5 +100,11 @@ export const catalogService = {
 
   getBrands: async () => {
     return catalogRepository.findBrands();
+  },
+
+  getVariantById: async (variantId: string) => {
+    const variant = await catalogRepository.findVariantById(variantId);
+    if (!variant) throw new AppError('Variante no encontrada.', 404, 'NOT_FOUND');
+    return variant;
   },
 };
