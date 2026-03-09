@@ -27,6 +27,7 @@ import productAttributesRouter from './modules/catalog/attributes/product-attrib
 import couponsRouter from './modules/coupons/coupons.router';
 import promotionsRouter from './modules/promotions/promotions.router';
 import compatRouter from './modules/compat/compat.router';
+import auditRouter from './modules/audit/audit.router';
 
 const app = express();
 
@@ -76,7 +77,9 @@ app.use('/notifications', notificationsRouter);
 // Addresses
 app.use('/addresses', addressesRouter);
 // Wishlist
-app.use('/wishlist', wishlistRouter)
+app.use('/wishlist', wishlistRouter);
+// Audit
+app.use('/audit', auditRouter);
 
 // Manejador de Errores
 app.use(errorHandler);
