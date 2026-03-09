@@ -10,5 +10,6 @@ router.put('/tax-profiles/:id', authenticate, billingController.updateTaxProfile
 router.delete('/tax-profiles/:id', authenticate, billingController.deleteTaxProfile);
 router.get('/invoices', authenticate, billingController.getInvoices);
 router.get('/invoices/:id', authenticate, billingController.getInvoiceById);
+router.get('/:id/items', authenticate, billingController.getInvoiceItems);
 
 export default router;

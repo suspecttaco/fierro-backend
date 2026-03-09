@@ -70,4 +70,12 @@ export const billingRepository = {
             include: { invoice_item: true, order: true, tax_profile: true },
         });
     },
+
+    findInvoiceItems: async (invoiceId: string) => {
+        return prisma.invoice_item.findMany({
+            where:   { invoice_id: invoiceId },
+            orderBy: { invoice_item_id: 'asc' },
+            include: { order_item: true },
+      });
+    },
 };

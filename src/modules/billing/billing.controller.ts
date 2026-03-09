@@ -47,4 +47,10 @@ export const billingController = {
       res.json(result);
     } catch (err) { next(err); }
   },
+
+  getInvoiceItems: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await billingService.getInvoiceItems(req.params.id as string, res.locals.user.sub));
+    } catch (e) { next(e); }
+  },
 };

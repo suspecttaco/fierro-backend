@@ -68,4 +68,9 @@ export const billingService = {
     }
     return invoice;
   },
+
+  getInvoiceItems: async (invoiceId: string, userId: string) => {
+    await billingService.getInvoiceById(invoiceId, userId);
+    return billingRepository.findInvoiceItems(invoiceId);
+  },
 };
