@@ -26,6 +26,7 @@ import productTagsRouter from './modules/catalog/tags/product-tags.router';
 import productAttributesRouter from './modules/catalog/attributes/product-attributes.router';
 import couponsRouter from './modules/coupons/coupons.router';
 import promotionsRouter from './modules/promotions/promotions.router';
+import compatRouter from './modules/compat/compat.router';
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use('/coupons',  couponsRouter);
 app.use('/promotions', promotionsRouter);
 // Builds
 app.use('/builds', buildsRouter);
+app.use('/compat', compatRouter);
 // Cart
 app.use('/cart', cartRouter);
 // Orders
