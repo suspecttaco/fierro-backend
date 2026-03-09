@@ -20,6 +20,7 @@ import reviewsRouter from './modules/reviews/reviews.router';
 import adminRouter from './modules/admin/admin.router';
 import notificationsRouter from './modules/notifications/notifications.router';
 import addressesRouter from './modules/addresses/addresses.router';
+import wishlistRouter from './modules/wishlist/wishlist.router'
 
 const app = express();
 
@@ -60,6 +61,8 @@ app.use('/admin', adminRouter);
 app.use('/notifications', notificationsRouter);
 // Addresses
 app.use('/addresses', addressesRouter);
+// Wishlist
+app.use('/wishlist', wishlistRouter)
 
 // Manejador de Errores
 app.use(errorHandler);
