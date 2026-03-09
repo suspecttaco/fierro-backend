@@ -1,10 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
-
-export interface AppError extends Error {
-    statusCode?: number;
-    code?: string;
-}
+import { AppError } from "../util/errors";
 
 export const errorHandler = (
     err: AppError,
