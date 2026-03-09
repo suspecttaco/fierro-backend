@@ -28,6 +28,7 @@ import couponsRouter from './modules/coupons/coupons.router';
 import promotionsRouter from './modules/promotions/promotions.router';
 import compatRouter from './modules/compat/compat.router';
 import auditRouter from './modules/audit/audit.router';
+import rolesRouter from './modules/roles/roles.router';
 
 const app = express();
 
@@ -80,6 +81,8 @@ app.use('/addresses', addressesRouter);
 app.use('/wishlist', wishlistRouter);
 // Audit
 app.use('/audit', auditRouter);
+// Roles
+app.use('/roles', rolesRouter);
 
 // Manejador de Errores
 app.use(errorHandler);
