@@ -1,7 +1,6 @@
-import { text } from "node:stream/consumers";
 import { prisma } from "../lib/prisma";
 
-export const generateSlug = async (text: string, table: 'product' | 'category' | 'brand'): Promise<string> => {
+export const generateSlug = async (text: string, table: 'product' | 'category' | 'brand' | 'tag' | 'attribute_type'): Promise<string> => {
     const base = text
         .toLowerCase()
         .normalize('NFD')

@@ -20,7 +20,11 @@ import reviewsRouter from './modules/reviews/reviews.router';
 import adminRouter from './modules/admin/admin.router';
 import notificationsRouter from './modules/notifications/notifications.router';
 import addressesRouter from './modules/addresses/addresses.router';
-import wishlistRouter from './modules/wishlist/wishlist.router'
+import wishlistRouter from './modules/wishlist/wishlist.router';
+import productImagesRouter    from './modules/catalog/product-images.router';
+import productTagsRouter      from './modules/catalog/product-tags.router';
+import productAttributesRouter from './modules/catalog/product-attributes.router';
+import couponsRouter          from './modules/coupons/coupons.router';
 
 const app = express();
 
@@ -43,6 +47,11 @@ app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 // Catalog
 app.use('/catalog', catalogRouter);
+app.use('/catalog',  productImagesRouter);
+app.use('/catalog',  productTagsRouter);
+app.use('/catalog',  productAttributesRouter);
+// Coupons
+app.use('/coupons',  couponsRouter);
 // Builds
 app.use('/builds', buildsRouter);
 // Cart
