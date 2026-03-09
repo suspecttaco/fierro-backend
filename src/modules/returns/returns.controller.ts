@@ -43,4 +43,16 @@ export const returnsController = {
       res.json(result);
     } catch (err) { next(err); }
   },
+
+  getStockMovements: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { variantId, type, page, limit } = req.query;
+      res.json(await returnsService.getStockMovements(
+        variantId as string,
+        type      as string,
+        Number(page)  || 1,
+        Number(limit) || 20,
+      ));
+    } catch (e) { next(e); }
+  },
 };

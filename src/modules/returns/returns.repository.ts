@@ -80,4 +80,26 @@ export const returnsRepository = {
     ]);
     return { items, total, page, limit };
   },
+
+  findStockMovements: async (variantId?: string, type?: string, page = 1, limit = 20) => {
+    const offset = (page - 1) * limit;
+    const where: any = {};
+    if (variantId) where.variant_id = variantId;
+    if (type)      where.type       = type;
+
+    const [items, total] = await Promise.all([
+      prisma.stock_movement.findMany({
+        where,
+        skip:    offset,
+        take:    limit,
+        orderBy: { created_at: 'desc' },
+        include: {
+          product_variant: { include: { product: true } },
+          user:            { select: { user_id: true, email: true, first_name: true, last_name: true } },
+        },
+      }),
+      prisma.stock_movement.count({ where }),
+    ]);
+    return { items, total, page, limit };
+  },
 };

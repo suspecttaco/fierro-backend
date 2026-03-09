@@ -86,4 +86,7 @@ export const returnsService = {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   },
+
+  getStockMovements: (variantId?: string, type?: string, page = 1, limit = 20) =>
+    returnsRepository.findStockMovements(variantId, type, page, limit),
 };

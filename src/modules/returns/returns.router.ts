@@ -9,6 +9,7 @@ router.get('/', authenticate, returnsController.getReturns);
 router.get('/:id', authenticate, returnsController.getReturnById);
 
 // Admin
+router.get('/stock-movements', authenticate, authorize('admin'), returnsController.getStockMovements);
 router.get('/admin/all', authenticate, authorize('admin', 'staff'), returnsController.getAllReturns);
 router.put('/admin/:id/status', authenticate, authorize('admin', 'staff'), returnsController.updateReturnStatus);
 
