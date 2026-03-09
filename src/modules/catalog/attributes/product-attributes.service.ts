@@ -1,6 +1,6 @@
 import { productAttributesRepository } from './product-attributes.repository';
 import type { CreateAttributeTypeInput, SetProductAttributeInput } from './product-attributes.schema';
-import { generateSlug } from '../../util/slug';
+import { generateSlug } from '../../../util/slug';
 
 export const productAttributesService = {
   getAllTypes:       ()                                                    => productAttributesRepository.findAllTypes(),

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { productTagsController } from './product-tags.controller';
-import { authenticate, authorize } from '../../middleware/auth';
+import { authenticate, authorize } from '../../../middleware/auth';
 
 const router = Router();
 const isAdmin = [authenticate, authorize('admin', 'staff')];

@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import { prisma } from '../../../lib/prisma';
 import type { CreateAttributeTypeInput, SetProductAttributeInput } from './product-attributes.schema';
 
 export const productAttributesRepository = {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { productImagesController } from './product-images.controller';
-import { authenticate, authorize } from '../../middleware/auth';
+import { authenticate, authorize } from '../../../middleware/auth';
 
 const router = Router();
 const isAdmin = [authenticate, authorize('admin', 'staff')];

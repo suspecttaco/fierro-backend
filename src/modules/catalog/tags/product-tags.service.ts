@@ -1,6 +1,6 @@
 import { productTagsRepository } from './product-tags.repository';
 import type { CreateTagInput, AssignTagsInput } from './product-tags.schema';
-import { generateSlug } from '../../util/slug';
+import { generateSlug } from '../../../util/slug';
 
 export const productTagsService = {
   getAllTags:   ()                                          => productTagsRepository.findAllTags(),
