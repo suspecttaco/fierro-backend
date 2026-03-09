@@ -21,10 +21,11 @@ import adminRouter from './modules/admin/admin.router';
 import notificationsRouter from './modules/notifications/notifications.router';
 import addressesRouter from './modules/addresses/addresses.router';
 import wishlistRouter from './modules/wishlist/wishlist.router';
-import productImagesRouter    from './modules/catalog/images/product-images.router';
-import productTagsRouter      from './modules/catalog/tags/product-tags.router';
+import productImagesRouter from './modules/catalog/images/product-images.router';
+import productTagsRouter from './modules/catalog/tags/product-tags.router';
 import productAttributesRouter from './modules/catalog/attributes/product-attributes.router';
-import couponsRouter          from './modules/coupons/coupons.router';
+import couponsRouter from './modules/coupons/coupons.router';
+import promotionsRouter from './modules/promotions/promotions.router';
 
 const app = express();
 
@@ -52,6 +53,8 @@ app.use('/catalog',  productTagsRouter);
 app.use('/catalog',  productAttributesRouter);
 // Coupons
 app.use('/coupons',  couponsRouter);
+// Promotions
+app.use('/promotions', promotionsRouter);
 // Builds
 app.use('/builds', buildsRouter);
 // Cart
