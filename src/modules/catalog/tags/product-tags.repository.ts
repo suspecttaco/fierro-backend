@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import { prisma } from '../../../lib/prisma';
 import type { CreateTagInput } from './product-tags.schema';
 
 export const productTagsRepository = {
