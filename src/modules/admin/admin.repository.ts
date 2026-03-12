@@ -19,7 +19,7 @@ export const adminRepository = {
   deleteProduct: async (productId: string) => {
     return prisma.product.update({
       where: { product_id: productId },
-      data:  { deleted_at: new Date(), is_active: false },
+      data: { deleted_at: new Date(), is_active: false },
     });
   },
 
@@ -38,7 +38,7 @@ export const adminRepository = {
   deleteVariant: async (variantId: string) => {
     return prisma.product_variant.update({
       where: { variant_id: variantId },
-      data:  { is_active: false },
+      data: { is_active: false },
     });
   },
 
@@ -51,7 +51,7 @@ export const adminRepository = {
     if (!variant) throw new Error('Variante no encontrada');
 
     const stockBefore = variant.stock_qty;
-    const stockAfter  = stockBefore + data.quantity;
+    const stockAfter = stockBefore + data.quantity;
 
     if (stockAfter < 0) {
       const err: any = new Error('Stock insuficiente para este ajuste');
@@ -62,18 +62,18 @@ export const adminRepository = {
 
     await prisma.product_variant.update({
       where: { variant_id: data.variant_id },
-      data:  { stock_qty: stockAfter },
+      data: { stock_qty: stockAfter },
     });
 
     return prisma.stock_movement.create({
       data: {
-        variant_id:   data.variant_id,
-        type:         data.type,
-        quantity:     data.quantity,
+        variant_id: data.variant_id,
+        type: data.type,
+        quantity: data.quantity,
         stock_before: stockBefore,
-        stock_after:  stockAfter,
-        notes:        data.notes,
-        created_by:   data.created_by,
+        stock_after: stockAfter,
+        notes: data.notes,
+        created_by: data.created_by,
       },
     });
   },
@@ -142,11 +142,65 @@ export const adminRepository = {
   assignRole: async (userId: string, roleSlug: string) => {
     const role = await prisma.role.findFirst({ where: { slug: roleSlug } });
     if (!role) throw new Error('Rol no encontrado');
-    
+
     return prisma.user_role.upsert({
       where: { user_id_role_id: { user_id: userId, role_id: role.role_id } },
       update: {},
       create: { user_id: userId, role_id: role.role_id },
     });
+  },
+
+  getInventory: async (page: number, limit: number, stockStatus?: string) => {
+    const offset = (page - 1) * limit;
+
+    const variants = await prisma.product_variant.findMany({
+      where: { is_active: true },
+      skip: offset,
+      take: limit,
+      orderBy: { stock_qty: 'asc' },
+      include: { product: { select: { product_id: true, name: true, sku: true } } },
+    });
+
+    const total = await prisma.product_variant.count({ where: { is_active: true } });
+
+    const items = variants.map(v => {
+      const available = v.stock_qty - v.stock_reserved;
+      const stock_status =
+        available <= 0 ? 'out_of_stock' :
+          available <= 5 ? 'low_stock' : 'in_stock';
+
+      return {
+        variant_id: v.variant_id,
+        sku_variant: v.sku_variant,
+        variant_name: v.name,
+        product_id: v.product.product_id,
+        product_name: v.product.name,
+        product_sku: v.product.sku,
+        stock_qty: v.stock_qty,
+        stock_reserved: v.stock_reserved,
+        available_stock: available,
+        stock_status,
+      };
+    });
+
+    const filteredItems = stockStatus
+      ? items.filter(i => i.stock_status === stockStatus)
+      : items;
+
+    return { items: filteredItems, total };
+  },
+
+  getStockMovements: async (variantId: string, page: number, limit: number) => {
+    const offset = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      prisma.stock_movement.findMany({
+        where: { variant_id: variantId },
+        skip: offset,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+      }),
+      prisma.stock_movement.count({ where: { variant_id: variantId } }),
+    ]);
+    return { items, total };
   },
 };

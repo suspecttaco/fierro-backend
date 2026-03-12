@@ -17,6 +17,8 @@ router.delete('/variants/:id',              ...isStaff, adminController.deleteVa
 
 // Stock
 router.post('/stock/adjust',                ...isStaff, adminController.adjustStock);
+router.get('/inventory',                         ...isStaff, adminController.getInventory);
+router.get('/inventory/:variantId/movements',    ...isStaff, adminController.getStockMovements);
 
 // Categorías
 router.post('/categories',                  ...isStaff, adminController.createCategory);

@@ -186,4 +186,20 @@ export const adminService = {
   assignRole: async (userId: string, input: AssignRoleInput) => {
     return adminRepository.assignRole(userId, input.roleSlug);
   },
+
+  getInventory: async (page = 1, limit = 30, stockStatus?: string) => {
+    const { items, total } = await adminRepository.getInventory(page, limit, stockStatus);
+    return {
+      data: items,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  },
+
+  getStockMovements: async (variantId: string, page = 1, limit = 30) => {
+    const { items, total } = await adminRepository.getStockMovements(variantId, page, limit);
+    return {
+      data: items,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  },
 };
