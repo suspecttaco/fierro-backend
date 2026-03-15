@@ -126,7 +126,17 @@ export const authService = {
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS);
     await authRepository.saveRefreshToken(user.user_id, newTokenHash, expiresAt);
 
-    return { accessToken, refreshToken: newRawToken };
+    return {
+      accessToken,
+      refreshToken: newRawToken,
+      user: {
+        userId:    user.user_id,
+        email:     user.email,
+        firstName: user.first_name,
+        lastName:  user.last_name,
+        role:      primaryRole,
+      },
+    };
   },
 
   logout: async (rawToken: string) => {

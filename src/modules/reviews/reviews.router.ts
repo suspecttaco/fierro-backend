@@ -6,6 +6,8 @@ const router = Router();
 
 router.post('/', authenticate, reviewsController.createReview);
 router.get('/product/:productId', reviewsController.getReviewsByProduct);
+router.get('/can-review/:productId', authenticate, reviewsController.canReview);
+router.get('/my-review/:productId', authenticate, reviewsController.getMyReview);
 
 // Admin
 router.get('/admin/all', authenticate, authorize('admin', 'staff'), reviewsController.getAllReviews);

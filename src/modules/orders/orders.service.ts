@@ -41,6 +41,9 @@ export const ordersService = {
     // Guardar idempotency key en notes
     await ordersRepository.saveIdempotencyKey(order.order_id, input.idempotencyKey);
 
+    // Actualizar método de pago
+    await ordersRepository.updatePaymentMethod(order.order_id, input.paymentMethod ?? 'card');
+
     return order;
   },
 
@@ -48,12 +51,12 @@ export const ordersService = {
     const { items, total } = await ordersRepository.findOrdersByUser(userId, page, limit);
     return {
       data: items.map(o => ({
-        orderId:     o.order_id,
+        orderId: o.order_id,
         orderNumber: o.order_number,
-        status:      o.status,
-        total:       o.total,
-        itemCount:   o.order_item.reduce((sum, i) => sum + i.quantity, 0),
-        createdAt:   o.created_at,
+        status: o.status,
+        total: o.total,
+        itemCount: o.order_item.reduce((sum, i) => sum + i.quantity, 0),
+        createdAt: o.created_at,
       })),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };

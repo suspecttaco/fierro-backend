@@ -42,9 +42,9 @@ export const authController = {
         res.status(401).json({ status: 401, code: 'NO_REFRESH_TOKEN', message: 'No autenticado' });
         return;
       }
-      const { accessToken, refreshToken } = await authService.refresh(token);
+      const { accessToken, refreshToken, user } = await authService.refresh(token);
       res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS);
-      res.json({ accessToken });
+      res.json({ accessToken, user });
     } catch (err) { next(err); }
   },
 

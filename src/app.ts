@@ -76,7 +76,7 @@ app.use('/admin', adminRouter);
 // Notifications
 app.use('/notifications', notificationsRouter);
 // Addresses
-app.use('/addresses', addressesRouter);
+app.use('/users/me/addresses', addressesRouter);
 // Wishlist
 app.use('/wishlist', wishlistRouter);
 // Audit

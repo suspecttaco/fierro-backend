@@ -5,7 +5,7 @@ import { authenticate, authorize } from "../../middleware/auth";
 const router = Router();
 
 // Cliente
-router.post('/', authenticate, ordersController.checkout);
+router.post('/checkout', authenticate, ordersController.checkout);
 router.get('/', authenticate, ordersController.getOrders);
 router.get('/:id', authenticate, ordersController.getOrderById);
 router.post('/:id/cancel', authenticate, ordersController.cancelOrder);

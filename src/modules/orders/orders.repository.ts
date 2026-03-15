@@ -76,7 +76,7 @@ export const ordersRepository = {
         },
         address: true,
         payment: true,
-        coupon:  true,
+        coupon: true,
       },
     });
   },
@@ -105,7 +105,7 @@ export const ordersRepository = {
   updateOrderStatus: async (orderId: string, status: string) => {
     return prisma.order.update({
       where: { order_id: orderId },
-      data:  { status, updated_at: new Date() },
+      data: { status, updated_at: new Date() },
     });
   },
 
@@ -118,7 +118,14 @@ export const ordersRepository = {
   saveIdempotencyKey: async (orderId: string, key: string) => {
     return prisma.order.update({
       where: { order_id: orderId },
-      data:  { notes: `idempotency:${key}` },
+      data: { notes: `idempotency:${key}` },
+    });
+  },
+
+  updatePaymentMethod: async (orderId: string, method: string) => {
+    return prisma.payment.updateMany({
+      where: { order_id: orderId },
+      data: { method },
     });
   },
 };

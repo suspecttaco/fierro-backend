@@ -14,15 +14,16 @@ export const reviewsRepository = {
   findExistingReview: async (userId: string, productId: string) => {
     return prisma.review.findUnique({
       where: { user_id_product_id: { user_id: userId, product_id: productId } },
+      include: { user: { select: { first_name: true, last_name: true } } },
     });
   },
 
   createReview: async (data: {
     product_id: string;
-    user_id:    string;
-    rating:     number;
-    title?:     string;
-    body?:      string;
+    user_id: string;
+    rating: number;
+    title?: string;
+    body?: string;
     is_verified_purchase: boolean;
     order_item_id?: string;
   }) => {
@@ -52,7 +53,7 @@ export const reviewsRepository = {
         skip: offset,
         take: limit,
         include: {
-          user:    { select: { first_name: true, last_name: true, email: true } },
+          user: { select: { first_name: true, last_name: true, email: true } },
           product: { select: { name: true, slug: true } },
         },
       }),
@@ -64,7 +65,7 @@ export const reviewsRepository = {
   updateReviewStatus: async (reviewId: string, status: string) => {
     return prisma.review.update({
       where: { review_id: reviewId },
-      data:  { status },
+      data: { status },
     });
   },
 

@@ -4,6 +4,33 @@ import type { CreateReviewInput, UpdateReviewStatusInput } from './reviews.schem
 
 export const reviewsService = {
 
+  canReview: async (productId: string, userId: string) => {
+    const [verifiedPurchase, existing] = await Promise.all([
+      reviewsRepository.findVerifiedPurchase(userId, productId),
+      reviewsRepository.findExistingReview(userId, productId),
+    ]);
+    return {
+      canReview:       !!verifiedPurchase && !existing,
+      alreadyReviewed: !!existing,
+    };
+  },
+
+  getMyReview: async (productId: string, userId: string) => {
+    const review = await reviewsRepository.findExistingReview(userId, productId);
+    if (!review) return null;
+    return {
+      reviewId:           review.review_id,
+      rating:             review.rating,
+      title:              review.title,
+      body:               review.body,
+      status:             review.status,
+      isVerifiedPurchase: review.is_verified_purchase,
+      helpfulCount:       review.helpful_count,
+      createdAt:          review.created_at,
+      user:               `${(review as any).user.first_name} ${(review as any).user.last_name}`,
+    };
+  },
+
   createReview: async (input: CreateReviewInput, userId: string) => {
     const existing = await reviewsRepository.findExistingReview(userId, input.productId);
     if (existing) {
@@ -31,14 +58,14 @@ export const reviewsService = {
     const { items, total } = await reviewsRepository.findReviewsByProduct(productId, page, limit);
     return {
       data: items.map(r => ({
-        reviewId:            r.review_id,
-        rating:              r.rating,
-        title:               r.title,
-        body:                r.body,
-        isVerifiedPurchase:  r.is_verified_purchase,
-        helpfulCount:        r.helpful_count,
-        createdAt:           r.created_at,
-        user:                `${r.user.first_name} ${r.user.last_name}`,
+        reviewId:           r.review_id,
+        rating:             r.rating,
+        title:              r.title,
+        body:               r.body,
+        isVerifiedPurchase: r.is_verified_purchase,
+        helpfulCount:       r.helpful_count,
+        createdAt:          r.created_at,
+        user:               `${r.user.first_name} ${r.user.last_name}`,
       })),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
