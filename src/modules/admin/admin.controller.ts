@@ -153,9 +153,14 @@ export const adminController = {
 
   getStockMovements: async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const variantId = req.params.variantId as string;
+      if (!variantId || variantId === 'null') {
+        res.status(400).json({ message: 'variantId inválido' });
+        return;
+      }
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 30;
-      const result = await adminService.getStockMovements(req.params.variantId as string, page, limit);
+      const result = await adminService.getStockMovements(variantId, page, limit);
       res.json(result);
     } catch (err) { next(err); }
   },

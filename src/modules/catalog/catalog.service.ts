@@ -8,27 +8,22 @@ export const catalogService = {
     const { items, total, page, limit } = await catalogRepository.findProducts(input);
 
     const products = items.map(p => ({
-      productId:    p.product_id,
-      name:         p.name,
-      slug:         p.slug,
-      basePrice:    p.base_price,
+      productId: p.product_id,
+      name: p.name,
+      slug: p.slug,
+      basePrice: p.base_price,
       comparePrice: p.compare_price,
-      avgRating:    p.avg_rating,
-      isFeatured:   p.is_featured,
-      brand:        p.brand,
-      category:     p.category,
-      image:        p.product_image[0]?.url ?? null,
-      inStock:      p.product_variant.some(v => (v.stock_qty - v.stock_reserved) > 0),
+      avgRating: p.avg_rating,
+      isFeatured: p.is_featured,
+      brand: p.brand,
+      category: p.category,
+      image: p.product_image[0]?.url ?? null,
+      inStock: p.product_variant.some(v => (v.stock_qty - v.stock_reserved) > 0),
     }));
 
     return {
       data: products,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   },
 
@@ -42,50 +37,66 @@ export const catalogService = {
     }
 
     return {
-      productId:         product.product_id,
-      name:              product.name,
-      slug:              product.slug,
-      description:       product.description,
-      shortDescription:  product.short_description,
-      basePrice:         product.base_price,
-      comparePrice:      product.compare_price,
-      avgRating:         product.avg_rating,
-      isFeatured:        product.is_featured,
-      brand:             product.brand,
-      category:          product.category,
-      images:            product.product_image,
-      variants:          product.product_variant.map(v => ({
-        variantId:     v.variant_id,
-        name:          v.name,
-        skuVariant:    v.sku_variant,
+      productId: product.product_id,
+      name: product.name,
+      slug: product.slug,
+      sku: product.sku,
+      description: product.description,
+      shortDescription: product.short_description,
+      basePrice: product.base_price,
+      comparePrice: product.compare_price,
+      costPrice: product.cost_price,
+      weightKg: product.weight_kg,
+      avgRating: product.avg_rating,
+      isFeatured: product.is_featured,
+      isActive: product.is_active,
+      requiresCompatibilityCheck: product.requires_compatibility_check,
+      brand: {
+        brand_id: (product.brand as any).brand_id,
+        name: product.brand.name,
+        slug: product.brand.slug,
+        logo_url: product.brand.logo_url,
+      },
+      category: {
+        category_id: (product.category as any).category_id,
+        name: product.category.name,
+        slug: product.category.slug,
+      },
+      images: product.product_image,
+      variants: product.product_variant.map(v => ({
+        variantId: v.variant_id,
+        name: v.name,
+        skuVariant: v.sku_variant,
         priceModifier: v.price_modifier,
+        stockQty: v.stock_qty,
+        stockReserved: v.stock_reserved,
         availableStock: v.stock_qty - v.stock_reserved,
-        attributes:    v.product_attribute.map(a => ({
-          name:  a.attribute_type.name,
-          unit:  a.attribute_type.unit,
+        barcode: v.barcode,
+        attributes: v.product_attribute.map(a => ({
+          name: a.attribute_type.name,
+          unit: a.attribute_type.unit,
           value: a.value_text ?? a.value_num,
         })),
       })),
       attributes: product.product_attribute.map(a => ({
-        name:  a.attribute_type.name,
-        unit:  a.attribute_type.unit,
+        name: a.attribute_type.name,
+        unit: a.attribute_type.unit,
         value: a.value_text ?? a.value_num,
       })),
-      tags:    product.product_tag.map(pt => pt.tag),
+      tags: product.product_tag.map(pt => pt.tag),
       reviews: product.review.map(r => ({
-        reviewId:  r.review_id,
-        rating:    r.rating,
-        title:     r.title,
-        body:      r.body,
+        reviewId: r.review_id,
+        rating: r.rating,
+        title: r.title,
+        body: r.body,
         createdAt: r.created_at,
-        user:      `${r.user.first_name} ${r.user.last_name}`,
+        user: `${r.user.first_name} ${r.user.last_name}`,
       })),
     };
   },
 
   getCategories: async () => {
     const categories = await catalogRepository.findCategories();
-    // construir árbol
     const map = new Map(categories.map(c => [c.category_id, { ...c, children: [] as any[] }]));
     const tree: any[] = [];
     map.forEach(node => {

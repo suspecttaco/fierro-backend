@@ -80,4 +80,26 @@ export const authController = {
       res.json(result);
     } catch (err) { next(err); }
   },
+
+  updateProfile: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = res.locals.user.sub;
+      const { firstName, lastName, phone } = req.body;
+      const result = await authService.updateProfile(userId, { firstName, lastName, phone });
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  changePassword: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = res.locals.user.sub;
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ message: 'Faltan campos requeridos' });
+        return;
+      }
+      const result = await authService.changePassword(userId, currentPassword, newPassword);
+      res.json(result);
+    } catch (err) { next(err); }
+  },
 };

@@ -8,3 +8,11 @@ app.listen(env.PORT, async () => {
   await prisma.$connect();
   console.log(`Server running on port ${env.PORT}`);
 });
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+});

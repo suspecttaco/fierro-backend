@@ -36,7 +36,8 @@ export const catalogController = {
 
   getVariantById: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      res.json(await catalogService.getVariantById(req.params.variantId as string));
-    } catch (e) { next(e); }
+      const result = await catalogService.getVariantById(req.params.variantId as string);
+      res.json(result);
+    } catch (err) { next(err); }
   },
 };

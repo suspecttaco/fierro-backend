@@ -6,7 +6,7 @@ export const authRepository = {
     return prisma.user.findUnique({
       where: { email },
       include: {
-        user_role_user_role_user_idTouser: { 
+        user_role_user_role_user_idTouser: {
           include: { role: true },
           orderBy: { assigned_at: 'desc' },
         }
@@ -110,6 +110,13 @@ export const authRepository = {
     if (!role) throw new Error('Rol customer no encontrado');
     return prisma.user_role.create({
       data: { user_id: userId, role_id: role.role_id },
+    });
+  },
+
+  updateProfile: async (userId: string, data: { first_name?: string; last_name?: string; phone?: string }) => {
+    return prisma.user.update({
+      where: { user_id: userId },
+      data,
     });
   },
 };

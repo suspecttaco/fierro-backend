@@ -1,7 +1,6 @@
 import { prisma } from '../../lib/prisma';
 
 export const adminRepository = {
-
   // Productos
   createProduct: async (data: {
     category_id: string; brand_id: string; sku: string; name: string; slug: string;
@@ -79,9 +78,17 @@ export const adminRepository = {
   },
 
   // Categorías
+
+  getCategoryById: async (categoryId: string) => {
+    return prisma.category.findUnique({
+      where: { category_id: categoryId },
+      select: { level: true },
+    });
+  },
+  
   createCategory: async (data: {
     parent_id?: string; name: string; slug: string; description?: string;
-    icon_url?: string; sort_order: number; is_active: boolean;
+    icon_url?: string; sort_order: number; is_active: boolean; level: number;
   }) => {
     return prisma.category.create({ data });
   },
@@ -153,22 +160,30 @@ export const adminRepository = {
   getInventory: async (page: number, limit: number, stockStatus?: string) => {
     const offset = (page - 1) * limit;
 
+    // Productos con variantes activas
     const variants = await prisma.product_variant.findMany({
       where: { is_active: true },
-      skip: offset,
-      take: limit,
-      orderBy: { stock_qty: 'asc' },
       include: { product: { select: { product_id: true, name: true, sku: true } } },
     });
 
-    const total = await prisma.product_variant.count({ where: { is_active: true } });
+    // Productos sin ninguna variante activa
+    const productsWithVariants = new Set(variants.map(v => v.product.product_id));
 
-    const items = variants.map(v => {
+    const productsWithoutVariants = await prisma.product.findMany({
+      where: {
+        is_active: true,
+        deleted_at: null,
+        NOT: { product_id: { in: [...productsWithVariants] } },
+      },
+      select: { product_id: true, name: true, sku: true },
+    });
+
+    // Mapear variantes reales
+    const variantItems = variants.map(v => {
       const available = v.stock_qty - v.stock_reserved;
       const stock_status =
         available <= 0 ? 'out_of_stock' :
           available <= 5 ? 'low_stock' : 'in_stock';
-
       return {
         variant_id: v.variant_id,
         sku_variant: v.sku_variant,
@@ -183,11 +198,31 @@ export const adminRepository = {
       };
     });
 
-    const filteredItems = stockStatus
-      ? items.filter(i => i.stock_status === stockStatus)
-      : items;
+    // Mapear productos sin variantes como filas con stock 0
+    const emptyItems = productsWithoutVariants.map(p => ({
+      variant_id: null,
+      sku_variant: '—',
+      variant_name: 'Sin variantes',
+      product_id: p.product_id,
+      product_name: p.name,
+      product_sku: p.sku,
+      stock_qty: 0,
+      stock_reserved: 0,
+      available_stock: 0,
+      stock_status: 'out_of_stock',
+    }));
 
-    return { items: filteredItems, total };
+    const allItems = [...variantItems, ...emptyItems];
+
+    const filteredItems = stockStatus
+      ? allItems.filter(i => i.stock_status === stockStatus)
+      : allItems;
+
+    // Paginación manual sobre el resultado combinado
+    const total = filteredItems.length;
+    const paged = filteredItems.slice(offset, offset + limit);
+
+    return { items: paged, total };
   },
 
   getStockMovements: async (variantId: string, page: number, limit: number) => {

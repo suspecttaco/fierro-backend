@@ -1,14 +1,16 @@
 import { Router } from 'express';
 import { authController } from './auth.controller';
-
+import { authenticate } from '../../middleware/auth';
 const router = Router();
 
-router.post('/register',        authController.register);
-router.post('/login',           authController.login);
-router.post('/refresh',         authController.refresh);
-router.post('/logout',          authController.logout);
-router.get('/verify-email',     authController.verifyEmail);
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.post('/refresh', authController.refresh);
+router.post('/logout', authController.logout);
+router.get('/verify-email', authController.verifyEmail);
 router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password',  authController.resetPassword);
+router.post('/reset-password', authController.resetPassword);
+router.put('/profile', authenticate, authController.updateProfile);
+router.post('/change-password', authenticate, authController.changePassword);
 
 export default router;

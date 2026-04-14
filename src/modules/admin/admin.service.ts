@@ -105,6 +105,11 @@ export const adminService = {
 
   // Categorías
   createCategory: async (input: CreateCategoryInput) => {
+    let level = 0;
+    if (input.parentId) {
+      const parent = await adminRepository.getCategoryById(input.parentId);
+      level = parent ? (parent.level ?? 0) + 1 : 0;
+    }
     return adminRepository.createCategory({
       parent_id: input.parentId,
       name: input.name,
@@ -113,6 +118,7 @@ export const adminService = {
       icon_url: input.iconUrl,
       sort_order: input.sortOrder,
       is_active: input.isActive,
+      level,
     });
   },
 

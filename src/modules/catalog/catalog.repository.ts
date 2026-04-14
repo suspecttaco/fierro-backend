@@ -12,12 +12,35 @@ export const catalogRepository = {
       deleted_at: null,
     };
 
-    if (category) where.category = { slug: category };
-    if (brand)    where.brand    = { slug: brand };
+    if (category) {
+      const parentCat = await prisma.category.findFirst({
+        where: { slug: category },
+        select: { category_id: true },
+      });
+      if (parentCat) {
+        const childCats = await prisma.category.findMany({
+          where: { parent_id: parentCat.category_id },
+          select: { category_id: true },
+        });
+        const ids = [parentCat.category_id, ...childCats.map(c => c.category_id)];
+        where.category_id = { in: ids };
+      } else {
+        // Categoría no encontrada — forzar 0 resultados sin usar null
+        return { items: [], total: 0, page, limit };
+      }
+    }
+    
+    if (brand) {
+      const brandRecord = await prisma.brand.findFirst({
+        where: { slug: brand },
+        select: { brand_id: true },
+      });
+      where.brand_id = brandRecord ? brandRecord.brand_id : 'none';
+    }
     if (price_min !== undefined) where.base_price = { ...where.base_price, gte: price_min };
     if (price_max !== undefined) where.base_price = { ...where.base_price, lte: price_max };
     if (q) where.OR = [
-      { name:              { contains: q, mode: 'insensitive' } },
+      { name: { contains: q, mode: 'insensitive' } },
       { short_description: { contains: q, mode: 'insensitive' } },
     ];
     if (in_stock) where.product_variant = { some: { is_active: true, stock_qty: { gt: 0 } } };
@@ -33,9 +56,9 @@ export const catalogRepository = {
         take: limit,
         orderBy: { created_at: 'desc' },
         include: {
-          brand:           { select: { name: true, slug: true } },
-          category:        { select: { name: true, slug: true } },
-          product_image:   { where: { is_primary: true }, take: 1 },
+          brand: { select: { name: true, slug: true } },
+          category: { select: { name: true, slug: true } },
+          product_image: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
           product_variant: { where: { is_active: true }, select: { stock_qty: true, stock_reserved: true, variant_id: true, price_modifier: true } },
         },
       }),
@@ -49,14 +72,21 @@ export const catalogRepository = {
     return prisma.product.findFirst({
       where: { slug, is_active: true, deleted_at: null },
       include: {
-        brand:            { select: { name: true, slug: true, logo_url: true } },
-        category:         { select: { name: true, slug: true } },
-        product_image:    { orderBy: { sort_order: 'asc' } },
-        product_variant:  { where: { is_active: true }, include: { product_attribute: { include: { attribute_type: true } } } },
+        brand: { select: { brand_id: true, name: true, slug: true, logo_url: true } },
+        category: { select: { category_id: true, name: true, slug: true } },
+        product_image: { orderBy: { sort_order: 'asc' } },
+        product_variant: {
+          where: { is_active: true },
+          include: { product_attribute: { include: { attribute_type: true } } },
+        },
         product_attribute: { include: { attribute_type: true }, where: { variant_id: null } },
-        product_tag:      { include: { tag: true } },
-        review:           { where: { status: 'approved' }, orderBy: { created_at: 'desc' }, take: 10,
-                            include: { user: { select: { first_name: true, last_name: true } } } },
+        product_tag: { include: { tag: true } },
+        review: {
+          where: { status: 'approved' },
+          orderBy: { created_at: 'desc' },
+          take: 10,
+          include: { user: { select: { first_name: true, last_name: true } } },
+        },
       },
     });
   },
@@ -67,12 +97,12 @@ export const catalogRepository = {
       orderBy: [{ level: 'asc' }, { sort_order: 'asc' }],
       select: {
         category_id: true,
-        parent_id:   true,
-        name:        true,
-        slug:        true,
-        icon_url:    true,
-        level:       true,
-        sort_order:  true,
+        parent_id: true,
+        name: true,
+        slug: true,
+        icon_url: true,
+        level: true,
+        sort_order: true,
       },
     });
   },
@@ -87,10 +117,10 @@ export const catalogRepository = {
 
   findVariantById: async (variantId: string) => {
     return prisma.product_variant.findUnique({
-      where:   { variant_id: variantId },
+      where: { variant_id: variantId },
       include: {
-        product:           { include: { brand: true, category: true } },
-        product_image:     true,
+        product: { include: { brand: true, category: true } },
+        product_image: true,
         product_attribute: { include: { attribute_type: true } },
       },
     });

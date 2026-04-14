@@ -6,10 +6,10 @@ import { sanitizeObject } from '../../util/sanitizer';
 import type { RegisterInput, LoginInput, ResetPasswordInput } from './auth.schema';
 
 const BCRYPT_ROUNDS = 12;
-const ACCESS_TOKEN_EXPIRY_MS  = 15 * 60 * 1000;
+const ACCESS_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
-const EMAIL_TOKEN_EXPIRY_MS   = 24 * 60 * 60 * 1000;
-const RESET_TOKEN_EXPIRY_MS   = 30 * 60 * 1000;
+const EMAIL_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000;
 
 export const authService = {
 
@@ -130,11 +130,12 @@ export const authService = {
       accessToken,
       refreshToken: newRawToken,
       user: {
-        userId:    user.user_id,
-        email:     user.email,
+        userId: user.user_id,
+        email: user.email,
         firstName: user.first_name,
-        lastName:  user.last_name,
-        role:      primaryRole,
+        lastName: user.last_name,
+        phone: user.phone ?? null,
+        role: primaryRole,
       },
     };
   },
@@ -179,6 +180,31 @@ export const authService = {
     const password_hash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
     await authRepository.updatePassword(record.user_id, password_hash, record.password_reset_token_id);
     await authRepository.revokeAllUserTokens(record.user_id);
+    return { message: 'Contraseña actualizada correctamente.' };
+  },
+
+  updateProfile: async (userId: string, data: { firstName?: string; lastName?: string; phone?: string }) => {
+    return authRepository.updateProfile(userId, {
+      first_name: data.firstName,
+      last_name: data.lastName,
+      phone: data.phone,
+    });
+  },
+
+  changePassword: async (userId: string, currentPassword: string, newPassword: string) => {
+    const user = await authRepository.findUserById(userId);
+    if (!user) throw new Error('Usuario no encontrado');
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) {
+      const err: any = new Error('Contraseña actual incorrecta');
+      err.statusCode = 400;
+      err.code = 'INVALID_PASSWORD';
+      throw err;
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 12);
+    await authRepository.updatePassword(userId, password_hash, '');
     return { message: 'Contraseña actualizada correctamente.' };
   },
 };
