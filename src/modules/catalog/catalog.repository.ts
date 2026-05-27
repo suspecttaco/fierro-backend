@@ -4,7 +4,7 @@ import type { ProductListInput } from './catalog.schema';
 export const catalogRepository = {
 
   findProducts: async (input: ProductListInput) => {
-    const { page, limit, category, brand, price_min, price_max, in_stock, tags, q } = input;
+    const { page, limit, category, brand, price_min, price_max, in_stock, tags, q, component_type } = input;
     const offset = (page - 1) * limit;
 
     const where: any = {
@@ -47,6 +47,9 @@ export const catalogRepository = {
     if (tags) {
       const tagList = tags.split(',').map(t => t.trim());
       where.product_tag = { some: { tag: { slug: { in: tagList } } } };
+    }
+    if (component_type) {
+      where.product_role = { some: { component_role: { slug: component_type } } };
     }
 
     const [items, total] = await Promise.all([

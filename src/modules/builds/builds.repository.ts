@@ -109,6 +109,18 @@ export const buildsRepository = {
     return prisma.build_item.delete({ where: { build_item_id: buildItemId } });
   },
 
+  removeBuildItemByRoleSlug: async (buildId: string, roleSlug: string) => {
+    const allItems = await prisma.build_item.findMany({
+      where: { build_id: buildId },
+      select: { build_item_id: true, component_role: { select: { slug: true, name: true } } },
+    });
+    console.log('[removeBuildItemByRoleSlug] buildId:', buildId, 'buscando slug:', roleSlug);
+    console.log('[removeBuildItemByRoleSlug] roles en build:', allItems.map(i => i.component_role.slug));
+    const item = allItems.find(i => i.component_role.slug === roleSlug);
+    if (!item) return null;
+    return prisma.build_item.delete({ where: { build_item_id: item.build_item_id } });
+  },
+
   updateBuild: async (buildId: string, data: {
     name?: string; is_public?: boolean; status?: string;
     total_price?: number; share_token?: string;

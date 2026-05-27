@@ -27,7 +27,21 @@ export const ordersService = {
     }
 
     // Llamar procedure — él calcula totales, descuenta stock y crea la orden
-    await ordersRepository.placeOrder(cart.cart_id, userId, input.addressId, input.couponId);
+    try {
+      await ordersRepository.placeOrder(cart.cart_id, userId, input.addressId, input.couponId);
+    } catch (err: any) {
+      // P2010 = raw query failed; P0001 = RAISE EXCEPTION del stored procedure
+      if (err?.code === 'P2010') {
+        const msg: string = err?.meta?.driverAdapterError?.message
+          ?? err?.message
+          ?? 'Error al procesar la orden';
+        const appErr: any = new Error(msg);
+        appErr.statusCode = 422;
+        appErr.code = 'ORDER_PROCESSING_ERROR';
+        throw appErr;
+      }
+      throw err;
+    }
 
     // Obtener la orden recién creada
     const order = await ordersRepository.findLastOrderByUser(userId);

@@ -10,9 +10,20 @@ export const buildsService = {
   },
 
   createBuild: async (input: CreateBuildInput, userId: string) => {
+    const defaultGroup = await prisma.compatibility_group.findFirst({
+      where: { is_active: true },
+      orderBy: { created_at: 'asc' },
+      select: { group_id: true },
+    });
+    if (!defaultGroup) {
+      const err: any = new Error('No hay grupos de compatibilidad configurados');
+      err.statusCode = 503;
+      err.code = 'NO_GROUPS_AVAILABLE';
+      throw err;
+    }
     return buildsRepository.createBuild(userId, {
       name:     input.name,
-      group_id: input.groupId,
+      group_id: defaultGroup.group_id,
     });
   },
 
@@ -98,6 +109,25 @@ export const buildsService = {
       throw err;
     }
     await buildsRepository.removeBuildItem(buildItemId);
+    await buildsRepository.recalculateTotalPrice(buildId);
+    return buildsRepository.findBuildById(buildId);
+  },
+
+  removeItemByRoleSlug: async (buildId: string, roleSlug: string, userId: string) => {
+    const build = await buildsRepository.findBuildById(buildId);
+    if (!build || build.user_id !== userId) {
+      const err: any = new Error('Build no encontrado');
+      err.statusCode = 404;
+      err.code = 'BUILD_NOT_FOUND';
+      throw err;
+    }
+    const deleted = await buildsRepository.removeBuildItemByRoleSlug(buildId, roleSlug);
+    if (!deleted) {
+      const err: any = new Error('Componente no encontrado en el build');
+      err.statusCode = 404;
+      err.code = 'ITEM_NOT_FOUND';
+      throw err;
+    }
     await buildsRepository.recalculateTotalPrice(buildId);
     return buildsRepository.findBuildById(buildId);
   },

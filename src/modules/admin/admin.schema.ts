@@ -1,9 +1,13 @@
 import { z } from 'zod';
 
+export const PC_COMPONENT_TYPES = [
+  'cpu', 'motherboard', 'gpu', 'ram', 'storage', 'psu', 'case', 'cooler',
+] as const;
+
 export const CreateProductSchema = z.object({
   categoryId:   z.string().uuid(),
   brandId:      z.string().uuid(),
-  sku:          z.string().min(1).max(50),
+  sku:          z.string().min(1).transform(val => val.slice(0, 50)),
   name:         z.string().min(2).max(200),
   description:  z.string().optional(),
   shortDescription: z.string().max(500).optional(),
@@ -14,6 +18,8 @@ export const CreateProductSchema = z.object({
   isActive:     z.boolean().default(true),
   isFeatured:   z.boolean().default(false),
   requiresCompatibilityCheck: z.boolean().default(false),
+  componentType: z.string().optional().nullable(),
+  pcSpecs:       z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export const UpdateProductSchema = CreateProductSchema.partial();
@@ -64,6 +70,42 @@ export const AssignRoleSchema = z.object({
   roleSlug: z.enum(['admin', 'staff', 'customer']),
 });
 
+export const CreateAttributeTypeSchema = z.object({
+  name:       z.string().min(2).max(100),
+  slug:       z.string().min(2).max(100),
+  dataType:   z.enum(['text', 'number', 'boolean']),
+  unit:       z.string().max(30).optional(),
+  filterable: z.boolean().default(false),
+  comparable: z.boolean().default(false),
+});
+
+export const SetProductAttributeSchema = z.object({
+  attrTypeId: z.string().uuid(),
+  variantId:  z.string().uuid().optional().nullable(),
+}).passthrough();
+
+export const UpdateProductAttributeSchema = z.object({
+  value:     z.union([z.string().max(500), z.number()]).optional().nullable(),
+  valueText: z.string().max(500).optional().nullable(),
+  valueNum:  z.coerce.number().optional().nullable(),
+});
+
+export type CreateAttributeTypeInput    = z.infer<typeof CreateAttributeTypeSchema>;
+export type SetProductAttributeInput    = z.infer<typeof SetProductAttributeSchema>;
+export type UpdateProductAttributeInput = z.infer<typeof UpdateProductAttributeSchema>;
+
+export const BulkUpdateSpecsItemSchema = z.object({
+  productId:     z.string().uuid(),
+  componentType: z.string().max(30).optional().nullable(),
+  pcSpecs:       z.record(z.string(), z.unknown()).optional().nullable(),
+});
+
+export const BulkUpdateSpecsSchema = z.object({
+  items: z.array(BulkUpdateSpecsItemSchema).min(1).max(200),
+});
+
+export type BulkUpdateSpecsItem  = z.infer<typeof BulkUpdateSpecsItemSchema>;
+export type BulkUpdateSpecsInput = z.infer<typeof BulkUpdateSpecsSchema>;
 export type AssignRoleInput       = z.infer<typeof AssignRoleSchema>;
 export type CreateProductInput    = z.infer<typeof CreateProductSchema>;
 export type UpdateProductInput    = z.infer<typeof UpdateProductSchema>;

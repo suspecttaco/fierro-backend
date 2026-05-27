@@ -10,10 +10,55 @@ import type {
   CreateBrandInput,
   UpdateUserInput,
   AssignRoleInput,
+  BulkUpdateSpecsInput,
+  CreateAttributeTypeInput,
+  SetProductAttributeInput,
+  UpdateProductAttributeInput,
 } from "./admin.schema";
+
+const RESERVED_KEYS = new Set(['attrTypeId', 'variantId', 'attr_type_id', 'variant_id']);
+
+function resolveAttributeValue(input: Record<string, any>) {
+  // Campos explícitos con prioridad
+  if (input.valueText != null && String(input.valueText).trim() !== '')
+    return { valueText: String(input.valueText), valueNum: null };
+  if (input.valueNum != null && !isNaN(Number(input.valueNum)))
+    return { valueText: null, valueNum: Number(input.valueNum) };
+
+  // Buscar en CUALQUIER campo desconocido del body
+  for (const key of Object.keys(input)) {
+    if (RESERVED_KEYS.has(key)) continue;
+    const raw = input[key];
+    if (raw == null || String(raw).trim() === '') continue;
+    const num = Number(raw);
+    if (!isNaN(num)) return { valueText: null, valueNum: num };
+    return { valueText: String(raw), valueNum: null };
+  }
+
+  return { valueText: null, valueNum: null };
+}
 
 export const adminService = {
   // Productos
+  getProduct: async (productId: string) => {
+    const product = await adminRepository.findProductById(productId);
+    if (!product) {
+      const err: any = new Error('Producto no encontrado');
+      err.statusCode = 404;
+      err.code = 'PRODUCT_NOT_FOUND';
+      throw err;
+    }
+    return product;
+  },
+
+  getProducts: async (page = 1, limit = 30, search?: string) => {
+    const { items, total } = await adminRepository.findAllProducts(page, limit, search);
+    return {
+      data: items,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  },
+
   createProduct: async (input: CreateProductInput) => {
     const slug = await generateSlug(input.name, "product");
     return adminRepository.createProduct({
@@ -31,6 +76,8 @@ export const adminService = {
       is_active: input.isActive,
       is_featured: input.isFeatured,
       requires_compatibility_check: input.requiresCompatibilityCheck,
+      component_type: input.componentType ?? null,
+      pc_specs: input.pcSpecs ?? null,
     });
   },
 
@@ -53,6 +100,8 @@ export const adminService = {
     if (input.isFeatured !== undefined) data.is_featured = input.isFeatured;
     if (input.requiresCompatibilityCheck !== undefined)
       data.requires_compatibility_check = input.requiresCompatibilityCheck;
+    if (input.componentType !== undefined) data.component_type = input.componentType ?? null;
+    if (input.pcSpecs !== undefined) data.pc_specs = input.pcSpecs ?? null;
     data.updated_at = new Date();
     return adminRepository.updateProduct(productId, data);
   },
@@ -126,11 +175,14 @@ export const adminService = {
     categoryId: string,
     input: Partial<CreateCategoryInput>,
   ) => {
-    const data: any = { ...input };
-    if (input.parentId) data.parent_id = input.parentId;
-    if (input.iconUrl) data.icon_url = input.iconUrl;
-    if (input.sortOrder !== undefined) data.sort_order = input.sortOrder;
-    if (input.isActive !== undefined) data.is_active = input.isActive;
+    const data: any = {};
+    if (input.name        !== undefined) data.name        = input.name;
+    if (input.slug        !== undefined) data.slug        = input.slug;
+    if (input.description !== undefined) data.description = input.description;
+    if (input.parentId    !== undefined) data.parent_id   = input.parentId ?? null;
+    if (input.iconUrl     !== undefined) data.icon_url    = input.iconUrl;
+    if (input.sortOrder   !== undefined) data.sort_order  = input.sortOrder;
+    if (input.isActive    !== undefined) data.is_active   = input.isActive;
     return adminRepository.updateCategory(categoryId, data);
   },
 
@@ -199,6 +251,69 @@ export const adminService = {
       data: items,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
+  },
+
+  // Tipos de atributo
+  getAttributeTypes: async () => {
+    return adminRepository.findAllAttributeTypes();
+  },
+
+  createAttributeType: async (input: CreateAttributeTypeInput) => {
+    return adminRepository.createAttributeType({
+      name:       input.name,
+      slug:       input.slug,
+      data_type:  input.dataType,
+      unit:       input.unit,
+      filterable: input.filterable,
+      comparable: input.comparable,
+    });
+  },
+
+  // Atributos de producto
+  getProductAttributes: async (productId: string) => {
+    return adminRepository.findProductAttributes(productId);
+  },
+
+  setProductAttribute: async (productId: string, input: SetProductAttributeInput) => {
+    console.log('[setProductAttribute] input recibido:', JSON.stringify(input));
+    const { valueText, valueNum } = resolveAttributeValue(input);
+    console.log('[setProductAttribute] resuelto:', { valueText, valueNum });
+    if (valueText == null && valueNum == null) {
+      const err: any = new Error(`MISSING_VALUE - body recibido: ${JSON.stringify(input)}`);
+      err.statusCode = 400;
+      err.code = 'MISSING_ATTRIBUTE_VALUE';
+      throw err;
+    }
+    return adminRepository.setProductAttribute({
+      product_id:   productId,
+      attr_type_id: input.attrTypeId,
+      variant_id:   input.variantId ?? null,
+      value_text:   valueText,
+      value_num:    valueNum,
+    });
+  },
+
+  updateProductAttribute: async (attrId: string, input: UpdateProductAttributeInput) => {
+    const { valueText, valueNum } = resolveAttributeValue(input);
+    return adminRepository.updateProductAttribute(attrId, {
+      value_text: valueText,
+      value_num:  valueNum,
+    });
+  },
+
+  deleteProductAttribute: async (attrId: string) => {
+    await adminRepository.deleteProductAttribute(attrId);
+    return { message: 'Atributo eliminado.' };
+  },
+
+  bulkUpdateSpecs: async (input: BulkUpdateSpecsInput) => {
+    return adminRepository.bulkUpdateSpecs(
+      input.items.map(i => ({
+        productId: i.productId,
+        componentType: i.componentType,
+        pcSpecs: i.pcSpecs,
+      })),
+    );
   },
 
   getStockMovements: async (variantId: string, page = 1, limit = 30) => {

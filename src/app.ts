@@ -29,6 +29,7 @@ import promotionsRouter from './modules/promotions/promotions.router';
 import compatRouter from './modules/compat/compat.router';
 import auditRouter from './modules/audit/audit.router';
 import rolesRouter from './modules/roles/roles.router';
+import buildOrdersRouter from './modules/build-orders/build-orders.router';
 
 const app = express();
 
@@ -83,6 +84,8 @@ app.use('/wishlist', wishlistRouter);
 app.use('/audit', auditRouter);
 // Roles
 app.use('/roles', rolesRouter);
+// Encargos de builds
+app.use('/build-orders', buildOrdersRouter);
 
 // Manejador de Errores
 app.use(errorHandler);

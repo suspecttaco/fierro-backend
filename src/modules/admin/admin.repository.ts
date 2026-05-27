@@ -7,8 +7,9 @@ export const adminRepository = {
     description?: string; short_description?: string; base_price: number;
     compare_price?: number; cost_price?: number; weight_kg?: number;
     is_active: boolean; is_featured: boolean; requires_compatibility_check: boolean;
+    component_type?: string | null; pc_specs?: Record<string, unknown> | null;
   }) => {
-    return prisma.product.create({ data });
+    return prisma.product.create({ data: data as any });
   },
 
   updateProduct: async (productId: string, data: any) => {
@@ -20,6 +21,49 @@ export const adminRepository = {
       where: { product_id: productId },
       data: { deleted_at: new Date(), is_active: false },
     });
+  },
+
+  findProductById: async (productId: string) => {
+    return prisma.product.findUnique({
+      where: { product_id: productId },
+      include: {
+        brand:    { select: { brand_id: true, name: true, slug: true } },
+        category: { select: { category_id: true, name: true, slug: true } },
+        product_image:   { orderBy: { sort_order: 'asc' } },
+        product_variant: {
+          include: { product_attribute: { include: { attribute_type: true } } },
+        },
+        product_attribute: { include: { attribute_type: true }, where: { variant_id: null } },
+        product_tag:       { include: { tag: true } },
+      },
+    });
+  },
+
+  findAllProducts: async (page: number, limit: number, search?: string) => {
+    const offset = (page - 1) * limit;
+    const where: any = { deleted_at: null };
+    if (search) where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { sku:  { contains: search, mode: 'insensitive' } },
+    ];
+    const [items, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip: offset,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        select: {
+          product_id: true, sku: true, name: true, slug: true,
+          base_price: true, is_active: true, is_featured: true,
+          component_type: true, pc_specs: true,
+          brand:    { select: { name: true } },
+          category: { select: { name: true } },
+          product_variant: { select: { variant_id: true, stock_qty: true, is_active: true } },
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+    return { items, total };
   },
 
   // Variantes
@@ -223,6 +267,80 @@ export const adminRepository = {
     const paged = filteredItems.slice(offset, offset + limit);
 
     return { items: paged, total };
+  },
+
+  // Tipos de atributo
+  findAllAttributeTypes: async () => {
+    return prisma.attribute_type.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        attr_type_id: true, name: true, slug: true,
+        data_type: true, unit: true, filterable: true, comparable: true,
+      },
+    });
+  },
+
+  createAttributeType: async (data: {
+    name: string; slug: string; data_type: string;
+    unit?: string; filterable: boolean; comparable: boolean;
+  }) => {
+    return prisma.attribute_type.create({ data });
+  },
+
+  // Atributos de producto
+  findProductAttributes: async (productId: string) => {
+    return prisma.product_attribute.findMany({
+      where: { product_id: productId },
+      include: { attribute_type: { select: { name: true, slug: true, unit: true, data_type: true } } },
+      orderBy: { attribute_type: { name: 'asc' } },
+    });
+  },
+
+  setProductAttribute: async (data: {
+    product_id: string; attr_type_id: string;
+    variant_id?: string | null; value_text?: string | null; value_num?: number | null;
+  }) => {
+    return prisma.product_attribute.create({ data: data as any });
+  },
+
+  updateProductAttribute: async (attrId: string, data: { value_text?: string | null; value_num?: number | null }) => {
+    return prisma.product_attribute.update({
+      where: { product_attr_id: attrId },
+      data,
+    });
+  },
+
+  deleteProductAttribute: async (attrId: string) => {
+    return prisma.product_attribute.delete({ where: { product_attr_id: attrId } });
+  },
+
+  bulkUpdateSpecs: async (items: Array<{ productId: string; componentType?: string | null; pcSpecs?: Record<string, unknown> | null }>) => {
+    const results = await Promise.allSettled(
+      items.map(({ productId, componentType, pcSpecs }) =>
+        prisma.product.update({
+          where: { product_id: productId },
+          data: {
+            component_type: componentType ?? null,
+            pc_specs: pcSpecs ?? null,
+            updated_at: new Date(),
+          } as any,
+          select: { product_id: true, sku: true, name: true, component_type: true },
+        }),
+      ),
+    );
+
+    const updated: any[] = [];
+    const failed: Array<{ productId: string; reason: string }> = [];
+
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        updated.push(r.value);
+      } else {
+        failed.push({ productId: items[i].productId, reason: (r.reason as Error).message });
+      }
+    });
+
+    return { updated, failed };
   },
 
   getStockMovements: async (variantId: string, page: number, limit: number) => {

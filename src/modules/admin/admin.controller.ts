@@ -5,12 +5,30 @@ import {
   CreateVariantSchema, UpdateVariantSchema,
   StockAdjustmentSchema, CreateCategorySchema,
   CreateBrandSchema, UpdateUserSchema,
-  AssignRoleSchema,
+  AssignRoleSchema, BulkUpdateSpecsSchema,
+  CreateAttributeTypeSchema, SetProductAttributeSchema, UpdateProductAttributeSchema,
 } from './admin.schema';
 
 export const adminController = {
 
   // Productos
+  getProduct: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.getProduct(req.params.id as string);
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  getProducts: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const page   = Number(req.query.page)  || 1;
+      const limit  = Number(req.query.limit) || 30;
+      const search = req.query.q as string | undefined;
+      const result = await adminService.getProducts(page, limit, search);
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
   createProduct: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const input = CreateProductSchema.parse(req.body);
@@ -148,6 +166,67 @@ export const adminController = {
       const stockStatus = req.query.stock_status as string | undefined;
       const result = await adminService.getInventory(page, limit, stockStatus);
       res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  // Tipos de atributo
+  getAttributeTypes: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.getAttributeTypes();
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  createAttributeType: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = CreateAttributeTypeSchema.parse(req.body);
+      const result = await adminService.createAttributeType(input);
+      res.status(201).json(result);
+    } catch (err) { next(err); }
+  },
+
+  // Atributos de producto
+  getProductAttributes: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.getProductAttributes(req.params.id as string);
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  setProductAttribute: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      console.log('[setProductAttribute] RAW BODY:', JSON.stringify(req.body));
+      const input = SetProductAttributeSchema.parse(req.body);
+      const result = await adminService.setProductAttribute(req.params.id as string, input);
+      res.status(201).json(result);
+    } catch (err) { next(err); }
+  },
+
+  updateProductAttribute: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = UpdateProductAttributeSchema.parse(req.body);
+      const result = await adminService.updateProductAttribute(req.params.attrId as string, input);
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  deleteProductAttribute: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.deleteProductAttribute(req.params.attrId as string);
+      res.json(result);
+    } catch (err) { next(err); }
+  },
+
+  bulkUpdateSpecs: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = BulkUpdateSpecsSchema.parse(req.body);
+      const result = await adminService.bulkUpdateSpecs(input);
+      res.json({
+        updated: result.updated.length,
+        failed: result.failed.length,
+        data: result.updated,
+        errors: result.failed.length > 0 ? result.failed : undefined,
+      });
     } catch (err) { next(err); }
   },
 
